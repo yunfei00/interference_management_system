@@ -21,4 +21,6 @@ db.sqlite3
 /projects/migrations
 /system/migrations
 /detection/migrations
+/accounts/migrations
+/datahub/migrations
 /security

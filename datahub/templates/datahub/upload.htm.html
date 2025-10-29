@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h2>上传数据文件</h2>
+<form method="POST" enctype="multipart/form-data">
+    {% csrf_token %}
+    <div class="mb-3">
+        <label for="id_dataset" class="form-label">选择数据集</label>
+        <select name="dataset" id="id_dataset" class="form-select" required>
+            {% for dataset in datasets %}
+            <option value="{{ dataset.id }}">{{ dataset.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="mb-3">
+        <label for="id_file" class="form-label">选择文件</label>
+        <input type="file" class="form-control" id="id_file" name="file" required>
+    </div>
+    <button type="submit" class="btn btn-primary">上传</button>
+</form>
+{% endblock %}

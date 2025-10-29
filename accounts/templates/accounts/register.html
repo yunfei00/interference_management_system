@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h2>用户注册</h2>
+<form method="POST">
+    {% csrf_token %}
+    <div class="mb-3">
+        <label for="id_username" class="form-label">用户名</label>
+        <input type="text" class="form-control" id="id_username" name="username" required>
+    </div>
+    <div class="mb-3">
+        <label for="id_email" class="form-label">邮箱</label>
+        <input type="email" class="form-control" id="id_email" name="email" required>
+    </div>
+    <div class="mb-3">
+        <label for="id_phone" class="form-label">手机号</label>
+        <input type="text" class="form-control" id="id_phone" name="phone">
+    </div>
+    <div class="mb-3">
+        <label for="id_company" class="form-label">公司</label>
+        <input type="text" class="form-control" id="id_company" name="company">
+    </div>
+    <div class="mb-3">
+        <label for="id_password" class="form-label">密码</label>
+        <input type="password" class="form-control" id="id_password" name="password" required>
+    </div>
+    <div class="mb-3">
+        <label for="id_confirm_password" class="form-label">确认密码</label>
+        <input type="password" class="form-control" id="id_confirm_password" name="confirm_password" required>
+    </div>
+    <button type="submit" class="btn btn-primary">提交</button>
+</form>
+{% endblock %}

@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Django
+*.log
+*.pot
+*.pyc
+db.sqlite3
+/media
+/staticfiles
+.env
+
+# IDE
+.vscode/
+.idea/
+/doc/容器全生命周期管控系统需求描述文档new.docx
+/images/migrations
+/projects/migrations
+/system/migrations
+/detection/migrations
+/security

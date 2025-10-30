@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h4>命令审计</h4>
+  <a class="btn btn-secondary" href="{% url 'ops:host_list' %}">返回主机列表</a>
+</div>
+<div class="table-responsive">
+  <table class="table table-hover align-middle">
+    <thead class="table-light">
+      <tr>
+        <th>ID</th>
+        <th>主机</th>
+        <th>命令</th>
+        <th>状态</th>
+        <th>操作人</th>
+        <th>创建时间</th>
+        <th>完成时间</th>
+        <th>结果</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for t in tasks %}
+      <tr>
+        <td>{{ t.id }}</td>
+        <td>{{ t.host.name }}</td>
+        <td>{{ t.get_command_display }}</td>
+        <td>
+          {% if t.status == 'SUCCESS' %}
+            <span class="badge bg-success">成功</span>
+          {% elif t.status == 'FAILED' %}
+            <span class="badge bg-danger">失败</span>
+          {% elif t.status == 'RUNNING' %}
+            <span class="badge bg-warning text-dark">执行中</span>
+          {% else %}
+            <span class="badge bg-secondary">排队中</span>
+          {% endif %}
+        </td>
+        <td>{{ t.operator|default:"-" }}</td>
+        <td>{{ t.created_at }}</td>
+        <td>{{ t.finished_at|default:"-" }}</td>
+        <td><code class="small">{{ t.result|default:"-" }}</code></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

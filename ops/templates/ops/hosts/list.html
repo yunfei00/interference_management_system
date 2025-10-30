@@ -1,0 +1,153 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h4>主机资产</h4>
+  <a class="btn btn-success" href="{% url 'ops:host_create' %}">新增主机</a>
+</div>
+
+<form class="row g-2 mb-3" method="get">
+  <div class="col-auto">
+    <input class="form-control" name="q" placeholder="主机名/IP" value="{{ q }}">
+  </div>
+  <div class="col-auto">
+    <select name="online" class="form-select">
+      <option value="">在线状态</option>
+      <option value="1" {% if online == '1' %}selected{% endif %}>在线</option>
+      <option value="0" {% if online == '0' %}selected{% endif %}>离线</option>
+    </select>
+  </div>
+  <div class="col-auto">
+    <button class="btn btn-primary">搜索</button>
+  </div>
+  <div class="col-auto ms-auto">
+    <div class="btn-group">
+      <button type="button" class="btn btn-outline-danger" id="btn-shutdown">关机</button>
+      <button type="button" class="btn btn-outline-warning" id="btn-reboot">重启</button>
+      <button type="button" class="btn btn-outline-secondary" id="btn-service-start">启动服务</button>
+      <button type="button" class="btn btn-outline-secondary" id="btn-service-restart">重启服务</button>
+      <button type="button" class="btn btn-outline-secondary" id="btn-service-stop">停止服务</button>
+    </div>
+  </div>
+</form>
+
+<div class="table-responsive">
+  <table class="table table-hover align-middle">
+    <thead class="table-light">
+      <tr>
+        <th style="width:32px"><input type="checkbox" id="check-all"></th>
+        <th>名称</th>
+        <th>IP:端口</th>
+        <th>在线</th>
+        <th>最近心跳</th>
+        <th>内存</th>
+        <th>GPU</th>
+        <th>操作</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for h in hosts %}
+      {% with last=last_metrics.h.id %}{% endwith %}
+      <tr data-host-id="{{ h.id }}">
+        <td><input type="checkbox" class="row-check" value="{{ h.id }}"></td>
+        <td>{{ h.name }}</td>
+        <td>{{ h.ip }}:{{ h.port }}</td>
+        <td>
+          {% if h.is_online %}
+            <span class="badge bg-success">在线</span>
+          {% else %}
+            <span class="badge bg-secondary">离线</span>
+          {% endif %}
+        </td>
+        <td>{{ h.last_heartbeat|default:"-" }}</td>
+        <td>
+          {% with m=last_metrics|get_item:h.id %}
+            {% if m %}
+              <div class="progress mem-bar" style="height:20px;" data-used="{{ m.mem_used }}" data-total="{{ m.mem_total }}">
+                <div class="progress-bar" role="progressbar"></div>
+              </div>
+              <small>{{ m.mem_used }} / {{ m.mem_total }} MB</small>
+            {% else %}
+              <span class="text-muted">-</span>
+            {% endif %}
+          {% endwith %}
+        </td>
+        <td>
+          {% with m=last_metrics|get_item:h.id %}
+            {% if m and m.gpu %}
+              {% for g in m.gpu %}
+                <div class="small mb-1">
+                  <span class="badge bg-info text-dark">GPU{{ g.index }} {{ g.name }}</span>
+                  <span class="ms-1">利用: {{ g.util }}%</span>
+                  <span class="ms-2">显存: {{ g.mem_used }}/{{ g.mem_total }}MB</span>
+                  <span class="ms-2">温度: {{ g.temp }}℃</span>
+                </div>
+              {% endfor %}
+            {% else %}
+              <span class="text-muted">-</span>
+            {% endif %}
+          {% endwith %}
+        </td>
+        <td>
+          <form class="d-inline" method="post" action="{% url 'ops:command_single' h.id %}">
+            {% csrf_token %}
+            <input type="hidden" name="command" value="reboot">
+            <button class="btn btn-sm btn-outline-warning">重启</button>
+          </form>
+          <form class="d-inline" method="post" action="{% url 'ops:command_single' h.id %}">
+            {% csrf_token %}
+            <input type="hidden" name="command" value="shutdown">
+            <button class="btn btn-sm btn-outline-danger">关机</button>
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- 批量服务名输入 Modal -->
+<div class="modal fade" id="serviceModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="serviceModalLabel">服务操作</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label">服务名（Service Name）</label>
+          <input type="text" class="form-control" id="inputServiceName" placeholder="例如：Spooler">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+        <button type="button" class="btn btn-primary" id="btn-service-confirm">确认执行</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<form id="batch-form" method="post" action="{% url 'ops:command_batch' %}" class="d-none">
+  {% csrf_token %}
+  <input type="hidden" name="command" id="batch-command">
+  <input type="hidden" name="service_name" id="batch-service-name">
+</form>
+
+<script>
+  // 简单的模板辅助：dict get
+  function ready(fn){document.addEventListener('DOMContentLoaded', fn);}
+  ready(function(){
+    document.querySelectorAll('.mem-bar').forEach(function(el){
+      var used = parseFloat(el.dataset.used || '0');
+      var total = parseFloat(el.dataset.total || '0');
+      var pct = 0;
+      if (total > 0) pct = Math.min(100, Math.round(used*100/total));
+      var bar = el.querySelector('.progress-bar');
+      if (bar) { bar.style.width = pct + '%'; bar.innerText = pct + '%'; }
+    });
+  });
+</script>
+
+<script src="{% static 'ops/ops.js' %}"></script>
+{% endblock %}

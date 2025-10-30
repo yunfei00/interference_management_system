@@ -1,0 +1,4 @@
+[
+  {"model":"auth.permission","pk":null,"fields":{"name":"Can view host","content_type":null,"codename":"view_host"}},
+  {"model":"auth.permission","pk":null,"fields":{"name":"Can control host","content_type":null,"codename":"control_host"}}
+]

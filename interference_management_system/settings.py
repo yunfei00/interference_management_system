@@ -39,6 +39,8 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "accounts.apps.AccountsConfig",
     "datahub.apps.DatahubConfig",
+    "tool_management_project.apps.ToolManagementProjectConfig",
+    "ops.apps.OpsConfig",
 ]
 
 MIDDLEWARE = [

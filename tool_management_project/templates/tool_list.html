@@ -1,0 +1,29 @@
+
+{% extends 'base.html' %}
+
+{% block content %}
+<h2>工具列表</h2>
+<table class="table">
+    <thead>
+        <tr>
+            <th>工具名称</th>
+            <th>描述</th>
+            <th>上传时间</th>
+            <th>操作</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for tool in tools %}
+        <tr>
+            <td>{{ tool.name }}</td>
+            <td>{{ tool.description }}</td>
+            <td>{{ tool.uploaded_at }}</td>
+            <td>
+                <a href="{% url 'download_tool' tool.id %}" class="btn btn-primary">下载</a>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+<a href="{% url 'upload_tool' %}" class="btn btn-success">上传新工具</a>
+{% endblock %}

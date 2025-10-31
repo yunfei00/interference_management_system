@@ -20,7 +20,8 @@ db.sqlite3
 /images/migrations
 /projects/migrations
 /system/migrations
-/detection/migrations
+/tool_management_project/migrations
 /accounts/migrations
 /datahub/migrations
+/ops/migrations
 /security

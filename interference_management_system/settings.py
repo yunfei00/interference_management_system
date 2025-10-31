@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     "datahub.apps.DatahubConfig",
     "tool_management_project.apps.ToolManagementProjectConfig",
     "ops.apps.OpsConfig",
+    "rest_framework",
 ]
 
 MIDDLEWARE = [

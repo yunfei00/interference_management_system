@@ -108,12 +108,13 @@
         </nav>
 
         <!-- Page Title -->
-        <h1 class="h3 mb-4">@yield('page_title', '页面标题')</h1>
+{#        <h1 class="h3 mb-4">@yield('page_title', '页面标题')</h1>#}
+        {% block page_title %}页面标题{% endblock %}
 
         <!-- Page Content -->
         <div class="card shadow-sm">
             <div class="card-header">
-                <h5 class="card-title">@yield('card_title', '卡片标题')</h5>
+                {% block card_title %}卡片标题{% endblock %}
             </div>
             <div class="card-body">
                 {% block content %}{% endblock %}

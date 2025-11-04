@@ -1,0 +1,46 @@
+[
+  {
+    "model": "accounts.user",
+    "pk": 1,
+    "fields": {
+      "username": "admin",
+      "password": "pbkdf2_sha256$1000000$2gV70Gthsljqc37fZm2V3p$b3T/wmGuk2oUYcDI7+CYI20uqQhP8ZLNxvEbL4VbLfI=",
+      "phone": "13800000000",
+      "company": "容器管理中心",
+      "approve_status": "approved"
+    }
+  },
+  {
+    "model": "accounts.user",
+    "pk": 2,
+    "fields": {
+      "username": "project_admin",
+      "password": "pbkdf2_sha256$1000000$0ORy7QuEx5s8Cw7geevJTH$vlDW0WGLV6STTK9ZX8A0HnuOPZfb963ac6ZmzIWM0jQ=",
+      "phone": "13900000001",
+      "company": "容器管理中心",
+      "approve_status": "approved"
+    }
+  },
+  {
+    "model": "accounts.user",
+    "pk": 3,
+    "fields": {
+      "username": "contractor",
+      "password": "pbkdf2_sha256$1000000$pvB5PRJftqjbypqj3xtFBD$Xa/ShZCr7JRPjmGx+ihU0VmJ6j4nUsr1VCo9cKO8wO8=",
+      "phone": "13700000002",
+      "company": "业务承建方A公司",
+      "approve_status": "approved"
+    }
+  },
+  {
+    "model": "accounts.user",
+    "pk": 4,
+    "fields": {
+      "username": "auditor",
+      "password": "pbkdf2_sha256$1000000$oAfUIjA6602XnpKs2qnZBH$BuVz5p5ahygWHJK1K0eln8b9cZPV3WRdVrCoeoKDuRc=",
+      "phone": "13600000003",
+      "company": "审计中心",
+      "approve_status": "approved"
+    }
+  }
+]

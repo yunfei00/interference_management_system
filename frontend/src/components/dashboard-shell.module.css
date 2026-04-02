@@ -1,0 +1,277 @@
+.page {
+  display: grid;
+  gap: 1.4rem;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 2rem clamp(1rem, 4vw, 2.6rem) 3rem;
+}
+
+.hero {
+  display: grid;
+  gap: 1.3rem;
+  padding: clamp(1.4rem, 3vw, 2rem);
+}
+
+.heroTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.heroTitle {
+  font-size: clamp(2.6rem, 6vw, 4.8rem);
+  line-height: 0.92;
+  letter-spacing: -0.06em;
+  max-width: 10ch;
+}
+
+.heroSubtitle {
+  max-width: 62ch;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.actionRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+}
+
+.metaRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.metaChip {
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.75);
+  padding: 0.55rem 0.8rem;
+  font-size: 0.86rem;
+  color: var(--ink);
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+.stat {
+  display: grid;
+  gap: 0.25rem;
+  padding: 1rem 1.05rem;
+  border-radius: 1.2rem;
+  background: rgba(255, 255, 255, 0.74);
+  border: 1px solid var(--line);
+}
+
+.statLabel {
+  color: var(--muted);
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.statValue {
+  font-size: clamp(1.4rem, 3vw, 2rem);
+  font-weight: 700;
+  letter-spacing: -0.04em;
+}
+
+.content {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.85fr);
+  gap: 1.25rem;
+}
+
+.stack {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.panel {
+  display: grid;
+  gap: 1rem;
+  padding: 1.35rem;
+}
+
+.panelHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.panelTitle {
+  font-size: 1.2rem;
+  font-weight: 650;
+}
+
+.panelDescription {
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.searchInput {
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  padding: 0.9rem 1rem;
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.searchInput:focus {
+  outline: none;
+  border-color: rgba(36, 122, 116, 0.72);
+  box-shadow: 0 0 0 5px rgba(36, 122, 116, 0.1);
+}
+
+.permissionList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+}
+
+.permissionChip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.55rem 0.85rem;
+  border: 1px solid rgba(36, 122, 116, 0.16);
+  background: rgba(220, 239, 231, 0.6);
+  font-size: 0.84rem;
+  font-family: var(--font-geist-mono), "Cascadia Code", monospace;
+}
+
+.empty {
+  border: 1px dashed var(--line);
+  border-radius: 1rem;
+  padding: 1rem;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.52);
+}
+
+.menuList {
+  list-style: none;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.menuNode {
+  display: grid;
+  gap: 0.65rem;
+  margin-left: calc(var(--depth) * 0.95rem);
+  border-left: 2px solid rgba(36, 122, 116, 0.18);
+  padding-left: 0.9rem;
+}
+
+.menuHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.menuName {
+  font-weight: 650;
+}
+
+.menuCode {
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.74);
+  padding: 0.25rem 0.55rem;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.menuPath {
+  color: var(--muted);
+  font-family: var(--font-geist-mono), "Cascadia Code", monospace;
+  font-size: 0.84rem;
+}
+
+.routeList {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.routeItem {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: baseline;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px dashed rgba(22, 50, 63, 0.14);
+}
+
+.routeLabel {
+  font-weight: 600;
+}
+
+.routeValue {
+  color: var(--muted);
+  font-family: var(--font-geist-mono), "Cascadia Code", monospace;
+  text-align: right;
+}
+
+.errorCard {
+  display: grid;
+  gap: 0.9rem;
+  padding: 1.5rem;
+}
+
+.errorText {
+  color: var(--accent-strong);
+  line-height: 1.6;
+}
+
+.skeletonStack {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.skeleton {
+  height: 1rem;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.45),
+    rgba(255, 255, 255, 0.9),
+    rgba(255, 255, 255, 0.45)
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite linear;
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@media (max-width: 1120px) {
+  .content {
+    grid-template-columns: 1fr;
+  }
+
+  .stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .stats {
+    grid-template-columns: 1fr;
+  }
+
+  .routeItem {
+    flex-direction: column;
+  }
+}

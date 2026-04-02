@@ -1,0 +1,185 @@
+.page {
+  display: grid;
+  gap: 1.4rem;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 2rem clamp(1rem, 4vw, 2.6rem) 3rem;
+}
+
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.18fr) minmax(320px, 0.82fr);
+  gap: 1.3rem;
+  align-items: start;
+}
+
+.heroCopy {
+  display: grid;
+  gap: 1.25rem;
+  padding: clamp(1.5rem, 3vw, 2.2rem);
+}
+
+.title {
+  font-size: clamp(3rem, 7vw, 6.2rem);
+  line-height: 0.9;
+  letter-spacing: -0.08em;
+  max-width: 10ch;
+}
+
+.subtitle {
+  max-width: 58ch;
+  color: var(--muted);
+  line-height: 1.75;
+  font-size: 1.02rem;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.55rem 0.8rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.76);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  font-size: 0.86rem;
+}
+
+.sideRail {
+  display: grid;
+  gap: 1rem;
+}
+
+.routeCard {
+  display: grid;
+  gap: 0.9rem;
+  padding: 1.35rem;
+}
+
+.routeTitle {
+  font-size: 1.18rem;
+  font-weight: 650;
+}
+
+.routeList {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.routeRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  padding-bottom: 0.8rem;
+  border-bottom: 1px dashed rgba(22, 50, 63, 0.14);
+}
+
+.routeName {
+  font-weight: 600;
+}
+
+.routeValue {
+  color: var(--muted);
+  font-family: var(--font-geist-mono), "Cascadia Code", monospace;
+  text-align: right;
+  font-size: 0.83rem;
+}
+
+.pillarGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.pillar {
+  display: grid;
+  gap: 0.8rem;
+  padding: 1.35rem;
+}
+
+.pillarStep {
+  display: inline-flex;
+  width: fit-content;
+  border-radius: 999px;
+  padding: 0.38rem 0.7rem;
+  background: rgba(232, 106, 51, 0.14);
+  color: var(--accent-strong);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.pillarTitle {
+  font-size: 1.25rem;
+  line-height: 1.2;
+}
+
+.pillarBody {
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+.storyCard {
+  display: grid;
+  gap: 1rem;
+  padding: 1.4rem;
+}
+
+.storyTitle {
+  font-size: clamp(1.8rem, 3vw, 2.6rem);
+  line-height: 1;
+  letter-spacing: -0.05em;
+}
+
+.storyGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.95rem;
+}
+
+.storyItem {
+  display: grid;
+  gap: 0.45rem;
+  padding: 1rem;
+  border-radius: 1.1rem;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.68);
+}
+
+.storyLabel {
+  font-weight: 650;
+}
+
+.storyText {
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+@media (max-width: 1100px) {
+  .hero {
+    grid-template-columns: 1fr;
+  }
+
+  .pillarGrid,
+  .storyGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .routeRow {
+    flex-direction: column;
+  }
+}

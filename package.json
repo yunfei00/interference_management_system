@@ -1,0 +1,12 @@
+{
+  "name": "django-next-baseline",
+  "private": true,
+  "scripts": {
+    "dev": "npm --prefix frontend run dev",
+    "build": "npm --prefix frontend run build",
+    "lint": "npm --prefix frontend run lint",
+    "typecheck": "npm --prefix frontend run typecheck",
+    "start": "npm --prefix frontend run start",
+    "install:frontend": "npm --prefix frontend install"
+  }
+}

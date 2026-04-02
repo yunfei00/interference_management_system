@@ -1,17 +1,40 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
+
+{% block title %}登录 - 公司管理系统{% endblock %}
+
+{% block page_title %}
+    <div>
+        <div class="text-uppercase text-secondary small mb-2">统一登录入口</div>
+        <h1 class="h3 mb-2">进入 Django 管理后台</h1>
+        <p class="text-secondary mb-0">这个入口用于 Django Session 登录，登录成功后会直接进入后台管理页。</p>
+    </div>
+{% endblock %}
 
 {% block content %}
-<h2>用户登录</h2>
-<form method="POST">
-    {% csrf_token %}
-    <div class="mb-3">
-        <label for="id_username" class="form-label">用户名</label>
-        <input type="text" class="form-control" id="id_username" name="username" required>
-    </div>
-    <div class="mb-3">
-        <label for="id_password" class="form-label">密码</label>
-        <input type="password" class="form-control" id="id_password" name="password" required>
-    </div>
-    <button type="submit" class="btn btn-primary">登录</button>
-</form>
+    {% if form.non_field_errors %}
+        <div class="alert alert-danger">
+            {% for error in form.non_field_errors %}
+                <div>{{ error }}</div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <form method="post" class="row g-3">
+        {% csrf_token %}
+        <div class="col-12">
+            <label for="id_username" class="form-label">用户名</label>
+            <input type="text" class="form-control" id="id_username" name="username" required autofocus value="{{ form.username.value|default:'' }}">
+        </div>
+        <div class="col-12">
+            <label for="id_password" class="form-label">密码</label>
+            <input type="password" class="form-control" id="id_password" name="password" required>
+        </div>
+        {% if next %}
+            <input type="hidden" name="next" value="{{ next }}">
+        {% endif %}
+        <div class="col-12 d-flex gap-2 flex-wrap">
+            <button type="submit" class="btn btn-primary">登录</button>
+            <a href="{% url 'accounts:register' %}" class="btn btn-outline-secondary">注册新账号</a>
+        </div>
+    </form>
 {% endblock %}

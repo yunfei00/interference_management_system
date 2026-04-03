@@ -13,6 +13,8 @@ from accounts.api_auth import (
     BaselineTokenRefreshView,
     CurrentUserAPIView,
     CurrentUserMenuAPIView,
+    RegisterAPIView,
+    RegistrationDepartmentListView,
 )
 from datahub.api import DatasetViewSet
 from ops.api import BatchCommandAPIView, CommandTaskViewSet, HostViewSet
@@ -42,6 +44,16 @@ urlpatterns = [
         "redoc/",
         SpectacularRedocView.as_view(url_name="api_schema"),
         name="api_redoc",
+    ),
+    path(
+        "v1/auth/register/departments/",
+        RegistrationDepartmentListView.as_view(),
+        name="api_v1_auth_register_departments",
+    ),
+    path(
+        "v1/auth/register/",
+        RegisterAPIView.as_view(),
+        name="api_v1_auth_register",
     ),
     path("v1/auth/token/", BaselineTokenObtainPairView.as_view(), name="api_v1_token"),
     path(

@@ -8,6 +8,7 @@ import type {
   BackendReadiness,
   MenuItem,
   RefreshPayload,
+  RegistrationDepartmentOption,
   SessionPayload,
   TokenPayload,
 } from "@/lib/contracts";
@@ -35,6 +36,14 @@ type SessionAttempt =
 
 type LoginResult =
   | { ok: true; status: number; data: TokenPayload }
+  | { ok: false; status: number; code: string; message: string };
+
+type RegisterPublicResult =
+  | { ok: true; message: string; username: string }
+  | { ok: false; status: number; code: string; message: string };
+
+type RegistrationDepartmentsResult =
+  | { ok: true; departments: RegistrationDepartmentOption[] }
   | { ok: false; status: number; code: string; message: string };
 
 type RefreshResult =
@@ -196,6 +205,77 @@ export async function loginWithPassword(
       ok: true,
       status: response.status,
       data: payload.data,
+    };
+  } catch {
+    return {
+      ok: false,
+      status: 502,
+      code: "backend_unavailable",
+      message: DEFAULT_ERROR_MESSAGE,
+    };
+  }
+}
+
+export async function fetchRegistrationDepartments(): Promise<RegistrationDepartmentsResult> {
+  try {
+    const { response, payload } = await fetchBackendEnvelope<
+      RegistrationDepartmentOption[]
+    >("/api/v1/auth/register/departments/", {
+      method: "GET",
+    });
+
+    if (!response.ok || !payload?.success || !Array.isArray(payload.data)) {
+      return {
+        ok: false,
+        status: response.status,
+        code: payload?.code ?? "register_options_failed",
+        message:
+          extractErrorMessage(payload) ??
+          describeUnexpectedBackendResponse(
+            response,
+            "无法加载注册选项。",
+          ),
+      };
+    }
+
+    return { ok: true, departments: payload.data };
+  } catch {
+    return {
+      ok: false,
+      status: 502,
+      code: "backend_unavailable",
+      message: DEFAULT_ERROR_MESSAGE,
+    };
+  }
+}
+
+export async function registerPublicAccount(
+  body: Record<string, unknown>,
+): Promise<RegisterPublicResult> {
+  try {
+    const { response, payload } = await fetchBackendEnvelope<{ username: string }>(
+      "/api/v1/auth/register/",
+      {
+        method: "POST",
+        body: JSON.stringify(body),
+      },
+    );
+
+    if (!response.ok || !payload?.success || !payload.data) {
+      return {
+        ok: false,
+        status: response.status,
+        code: payload?.code ?? "register_failed",
+        message:
+          extractErrorMessage(payload) ??
+          describeUnexpectedBackendResponse(response, "注册失败。"),
+      };
+    }
+
+    return {
+      ok: true,
+      message: payload.message,
+      username: payload.data.username,
     };
   } catch {
     return {

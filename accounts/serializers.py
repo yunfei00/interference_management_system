@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from rest_framework import serializers
 
-from .models import User
+from .models import Department, User
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -81,3 +81,62 @@ class UserSerializer(serializers.ModelSerializer):
 
     def get_updated_at(self, obj):
         return obj.last_login or obj.date_joined
+
+
+class DepartmentRegistrationOptionSerializer(serializers.ModelSerializer):
+    full_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Department
+        fields = ["id", "code", "full_name"]
+
+    def get_full_name(self, obj: Department) -> str:
+        return obj.full_name
+
+
+class PublicRegisterSerializer(serializers.Serializer):
+    username = serializers.CharField(max_length=150)
+    email = serializers.EmailField(required=False, allow_blank=True)
+    company = serializers.CharField(max_length=200, required=False, allow_blank=True)
+    phone = serializers.CharField(max_length=20, required=False, allow_blank=True)
+    department = serializers.PrimaryKeyRelatedField(
+        queryset=Department.objects.filter(
+            is_active=True,
+            department_type=Department.TYPE_DEPARTMENT,
+        ).select_related("parent"),
+        required=False,
+        allow_null=True,
+    )
+    password = serializers.CharField(write_only=True, min_length=8)
+    confirm_password = serializers.CharField(write_only=True, min_length=8)
+
+    def validate_username(self, value: str) -> str:
+        cleaned = value.strip()
+        if not cleaned:
+            raise serializers.ValidationError("用户名不能为空。")
+        if User.objects.filter(username=cleaned).exists():
+            raise serializers.ValidationError("该用户名已被注册。")
+        return cleaned
+
+    def validate(self, attrs: dict) -> dict:
+        if attrs["password"] != attrs["confirm_password"]:
+            raise serializers.ValidationError({"confirm_password": "两次密码不一致。"})
+        return attrs
+
+    def create(self, validated_data: dict) -> User:
+        validated_data.pop("confirm_password")
+        password = validated_data.pop("password")
+        department = validated_data.pop("department", None)
+        user = User.objects.create_user(
+            username=validated_data["username"],
+            email=(validated_data.get("email") or "").strip() or "",
+            password=password,
+        )
+        user.company = (validated_data.get("company") or "").strip() or ""
+        user.phone = (validated_data.get("phone") or "").strip() or ""
+        user.department = department
+        user.approve_status = User.APPROVE_PENDING
+        user.save(
+            update_fields=["company", "phone", "department", "approve_status"],
+        )
+        return user

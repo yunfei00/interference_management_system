@@ -9,7 +9,12 @@ import { APP_NAME } from "@/lib/public-config";
 
 import styles from "./login-form.module.css";
 
-export function LoginForm() {
+type LoginFormProps = {
+  /** 嵌入门户时使用更紧凑的文案与布局 */
+  embedded?: boolean;
+};
+
+export function LoginForm({ embedded = false }: LoginFormProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const nextPath = resolveNextPath(searchParams.get("next"));
@@ -64,9 +69,13 @@ export function LoginForm() {
           </div>
         </div>
 
-        <h1 className={styles.title}>登录到 {APP_NAME}</h1>
+        <h1 className={styles.title}>
+          {embedded ? "登录" : `登录到 ${APP_NAME}`}
+        </h1>
         <p className={styles.subtitle}>
-          使用企业账号完成身份认证。系统会结合审批状态与所属部门，自动分配可见页面与工作区权限。
+          {embedded
+            ? "使用已开通的企业账号登录。"
+            : "使用企业账号完成身份认证。系统会结合审批状态与所属部门，自动分配可见页面与工作区权限。"}
         </p>
       </div>
 
@@ -102,20 +111,24 @@ export function LoginForm() {
         </label>
 
         <button className={styles.submitButton} disabled={isPending} type="submit">
-          {isPending ? "登录中..." : "登录平台"}
+          {isPending ? "登录中..." : embedded ? "登录" : "登录平台"}
         </button>
       </form>
 
-      <div className={styles.ruleList}>
-        <div className={styles.ruleItem}>审批通过后才会开通业务工作台访问权限</div>
-        <div className={styles.ruleItem}>登录后自动匹配电磁 / 射频及子部门可见页面</div>
-        <div className={styles.ruleItem}>首次启用管理员账号后请及时修改密码并完善部门信息</div>
-      </div>
+      {embedded ? null : (
+        <>
+          <div className={styles.ruleList}>
+            <div className={styles.ruleItem}>审批通过后才会开通业务工作台访问权限</div>
+            <div className={styles.ruleItem}>登录后自动匹配电磁 / 射频及子部门可见页面</div>
+            <div className={styles.ruleItem}>首次启用管理员账号后请及时修改密码并完善部门信息</div>
+          </div>
 
-      <div className={styles.footer}>
-        <p>如果账号尚未开通，请先完成注册审批或联系管理员处理。</p>
-        <p>当前登录页用于企业统一身份认证，不再展示技术迁移说明。</p>
-      </div>
+          <div className={styles.footer}>
+            <p>如果账号尚未开通，请先完成注册审批或联系管理员处理。</p>
+            <p>当前登录页用于企业统一身份认证，不再展示技术迁移说明。</p>
+          </div>
+        </>
+      )}
     </section>
   );
 }

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema
+from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
@@ -10,9 +11,14 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from apps.common.api import BaselineAPIView, build_frontend_modes
 from apps.common.api_contract import BaselineJSONRenderer
 
+from .models import Department
 from .permissions import get_user_perm_keys, is_user_approved
 from .selectors import build_current_user_menu_tree
-from .serializers import UserSerializer
+from .serializers import (
+    DepartmentRegistrationOptionSerializer,
+    PublicRegisterSerializer,
+    UserSerializer,
+)
 
 
 class BaselineTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -97,3 +103,45 @@ class CurrentUserMenuAPIView(BaselineAPIView):
     )
     def get(self, request):
         return self.success_response(data=build_current_user_menu_tree(request.user))
+
+
+class RegistrationDepartmentListView(BaselineAPIView):
+    permission_classes = (AllowAny,)
+
+    @extend_schema(
+        tags=["Authentication"],
+        summary="注册页可选部门列表",
+        responses=OpenApiTypes.OBJECT,
+    )
+    def get(self, request):
+        qs = (
+            Department.objects.filter(
+                is_active=True,
+                department_type=Department.TYPE_DEPARTMENT,
+            )
+            .select_related("parent")
+            .order_by("sort", "id")
+        )
+        data = DepartmentRegistrationOptionSerializer(qs, many=True).data
+        return self.success_response(data=data)
+
+
+class RegisterAPIView(BaselineAPIView):
+    permission_classes = (AllowAny,)
+
+    @extend_schema(
+        tags=["Authentication"],
+        summary="自助注册",
+        request=PublicRegisterSerializer,
+        responses=OpenApiTypes.OBJECT,
+    )
+    def post(self, request):
+        serializer = PublicRegisterSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        return self.success_response(
+            data={"username": user.username},
+            code="created",
+            message="注册成功，请等待管理员审批后再登录。",
+            status_code=status.HTTP_201_CREATED,
+        )

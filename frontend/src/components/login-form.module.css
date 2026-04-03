@@ -142,6 +142,32 @@
   line-height: 1.55;
 }
 
+.success {
+  border-radius: 1rem;
+  border: 1px solid rgba(36, 122, 116, 0.2);
+  background: rgba(220, 239, 231, 0.68);
+  padding: 0.95rem 1rem;
+  color: var(--teal);
+  line-height: 1.55;
+}
+
+.inlineLink {
+  margin-left: 0.35rem;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--accent-strong);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+}
+
+.inlineLink:hover {
+  color: var(--accent);
+}
+
 .ruleList {
   display: grid;
   gap: 0.7rem;

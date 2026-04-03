@@ -30,6 +30,12 @@ export type PaginatedPayload<T> = {
   pagination: PaginationMeta;
 };
 
+export type RegistrationDepartmentOption = {
+  id: number;
+  code: string;
+  full_name: string;
+};
+
 export type AuthUser = {
   id: number;
   username: string;

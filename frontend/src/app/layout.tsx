@@ -7,7 +7,7 @@ export const metadata: Metadata = {
     default: "干扰管理平台",
     template: "%s | 干扰管理平台",
   },
-  description: "基于 Django + Next.js 的企业干扰管理系统前端。",
+  description: "企业干扰管理系统。",
 };
 
 export default function RootLayout({

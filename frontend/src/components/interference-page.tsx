@@ -1,19 +1,15 @@
 "use client";
 
+import type { Route } from "next";
 import Link from "next/link";
 
-import type {
-  CommandTaskItem,
-  DatasetItem,
-  HostItem,
-  ToolItem,
-} from "@/lib/contracts";
+import type { CommandTaskItem, DatasetItem, HostItem } from "@/lib/contracts";
 import { hasDashboardPermission } from "@/lib/dashboard-navigation";
 import { defaultFetchMessages } from "@/lib/fetch-messages";
 import { usePaginatedResource } from "@/lib/use-paginated-resource";
+import { useToolsPaginatedResource } from "@/lib/use-tools-bff-resource";
 
 import { DepartmentAccessGuard } from "./department-access-guard";
-import { InterferenceWorkspaceNav } from "./interference-workspace-nav";
 import { useDashboardSession } from "./dashboard-session-provider";
 import styles from "./department-pages.module.css";
 
@@ -25,24 +21,31 @@ function getCount(state: { kind: string; data?: { pagination: { count: number } 
   return state.data?.pagination.count ?? "-";
 }
 
+const P_DASH = ["department.interference.view", "interference.dashboard.view"];
+const P_DATA = ["department.interference.view", "interference.datahub.view"];
+const P_TOOLS = ["department.interference.view", "interference.tools.view"];
+const P_HOSTS = ["department.interference.view", "interference.hosts.view"];
+const P_CMD = ["department.interference.view", "interference.commands.view"];
+
 export function InterferencePage() {
   const { state } = useDashboardSession();
   const enabled = state.kind === "ready";
   const permissions = enabled ? state.data.permissions : [];
-  const canSeeHosts = hasDashboardPermission(permissions, "ops.host.view");
-  const canSeeCommands = hasDashboardPermission(permissions, "ops.command.view");
+  const sessionUser = enabled ? state.data.user : null;
+  const canSeeHosts = hasDashboardPermission(permissions, P_HOSTS);
+  const canSeeCommands = hasDashboardPermission(permissions, P_CMD);
+  const canSeeData = hasDashboardPermission(permissions, P_DATA);
+  const canSeeTools = hasDashboardPermission(permissions, P_TOOLS);
 
   const datasetsState = usePaginatedResource<DatasetItem>({
     endpoint: "/api/datahub/datasets",
     query: { page: 1 },
-    enabled,
+    enabled: enabled && canSeeData,
     messages: defaultFetchMessages,
   });
-  const toolsState = usePaginatedResource<ToolItem>({
-    endpoint: "/api/tools",
-    query: { page: 1 },
-    enabled,
-    messages: defaultFetchMessages,
+  const toolsState = useToolsPaginatedResource({
+    query: { page: 1, page_size: 10 },
+    enabled: enabled && canSeeTools,
   });
   const hostsState = usePaginatedResource<HostItem>({
     endpoint: "/api/ops/hosts",
@@ -59,118 +62,143 @@ export function InterferencePage() {
 
   return (
     <DepartmentAccessGuard
-      description="当前账号没有进入干扰子部门页面的权限。"
-      permission="department.interference.view"
-      title="无法访问干扰页面"
+      description="当前账号没有进入干扰子部门门户的权限。"
+      requiredPermissions={P_DASH}
+      title="无法访问干扰门户"
     >
-      <main className={styles.page}>
-        <section className={`surface ${styles.hero}`}>
-          <div className={styles.eyebrow}>电磁 / 干扰</div>
-          <h1 className={styles.title}>原有业务内容现在都归到干扰</h1>
-          <p className={styles.copy}>
-            你之前系统里的数据中心、工具仓库、主机管理和命令审计，现在都作为“干扰”子部门的工作区继续保留。
-            后续如果再细拆，也会从这里往下扩。
+      <div className={`${styles.page} ${styles.portalPage}`}>
+        <header className={styles.portalHeader}>
+          <h1 className={styles.portalTitle}>干扰门户</h1>
+          <p className={styles.portalDeptPath}>电磁 / 干扰 子部门工作入口</p>
+          <p className={styles.portalLead}>
+            统一管理干扰相关的数据资源、工具能力与现场主机，支持数据分析、工具调度与运维管理。
           </p>
+        </header>
 
-          <div className={styles.chipRow}>
-            <span className={styles.chip}>数据集：{getCount(datasetsState)}</span>
-            <span className={styles.chip}>工具：{getCount(toolsState)}</span>
-            <span className={styles.chip}>
-              主机：{canSeeHosts ? getCount(hostsState) : "无权限"}
+        <section className={styles.portalMain} aria-label="业务入口">
+          <div className={styles.portalCardGrid}>
+            {canSeeData ? (
+              <Link
+                className={`${styles.card} ${styles.portalCard} ${styles.portalCardClickable}`}
+                href={
+                  "/dashboard/electromagnetic/interference/datasets" as unknown as Route
+                }
+              >
+                <div className={styles.cardTitle}>数据中心</div>
+                <div className={styles.cardCopy}>
+                  平台侧数据集与测量资产的统一纳管、上传与可视化分析。
+                </div>
+              </Link>
+            ) : (
+              <div
+                className={`${styles.card} ${styles.portalCard} ${styles.portalCardMuted}`}
+              >
+                <div className={styles.cardTitle}>数据中心</div>
+                <div className={styles.cardCopy}>当前账号未开通数据中心访问权限。</div>
+              </div>
+            )}
+
+            {canSeeTools ? (
+              <Link
+                className={`${styles.card} ${styles.portalCard} ${styles.portalCardClickable}`}
+                href={
+                  "/dashboard/electromagnetic/interference/tools" as unknown as Route
+                }
+              >
+                <div className={styles.cardTitle}>工具仓库</div>
+                <div className={styles.cardCopy}>
+                  工具版本与分发能力，统一承载分析与采集相关资产。
+                </div>
+              </Link>
+            ) : (
+              <div
+                className={`${styles.card} ${styles.portalCard} ${styles.portalCardMuted}`}
+              >
+                <div className={styles.cardTitle}>工具仓库</div>
+                <div className={styles.cardCopy}>当前账号未开通工具仓库访问权限。</div>
+              </div>
+            )}
+
+            {canSeeHosts ? (
+              <Link
+                className={`${styles.card} ${styles.portalCard} ${styles.portalCardClickable}`}
+                href={
+                  "/dashboard/electromagnetic/interference/hosts" as unknown as Route
+                }
+              >
+                <div className={styles.cardTitle}>主机管理</div>
+                <div className={styles.cardCopy}>
+                  主机资产与连接状态的平台视图，支持授权范围内的运行管理。
+                </div>
+              </Link>
+            ) : (
+              <div
+                className={`${styles.card} ${styles.portalCard} ${styles.portalCardMuted}`}
+              >
+                <div className={styles.cardTitle}>主机管理</div>
+                <div className={styles.cardCopy}>
+                  当前账号未开通主机管理权限，如需使用请联系管理员。
+                </div>
+              </div>
+            )}
+
+            {canSeeCommands ? (
+              <Link
+                className={`${styles.card} ${styles.portalCard} ${styles.portalCardClickable}`}
+                href={
+                  "/dashboard/electromagnetic/interference/commands" as unknown as Route
+                }
+              >
+                <div className={styles.cardTitle}>命令审计</div>
+                <div className={styles.cardCopy}>
+                  远程操作留痕与审计查询，支撑内控与合规追溯。
+                </div>
+              </Link>
+            ) : (
+              <div
+                className={`${styles.card} ${styles.portalCard} ${styles.portalCardMuted}`}
+              >
+                <div className={styles.cardTitle}>命令审计</div>
+                <div className={styles.cardCopy}>
+                  当前账号未开通命令审计权限，如需使用请联系管理员。
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+
+        <footer className={styles.portalFoot}>
+          {sessionUser ? (
+            <p className={styles.portalUserMeta}>
+              <span>{sessionUser.username}</span>
+              <span className={styles.portalUserSep}>·</span>
+              <span>{sessionUser.department_full_name ?? "组织待分配"}</span>
+            </p>
+          ) : null}
+
+          <div className={styles.portalStats}>
+            <span className={styles.portalStatChip}>数据集 {getCount(datasetsState)}</span>
+            <span className={styles.portalStatChip}>工具 {getCount(toolsState)}</span>
+            <span className={styles.portalStatChip}>
+              主机 {canSeeHosts ? getCount(hostsState) : "—"}
             </span>
-            <span className={styles.chip}>
-              命令：{canSeeCommands ? getCount(commandsState) : "无权限"}
+            <span className={styles.portalStatChip}>
+              审计 {canSeeCommands ? getCount(commandsState) : "—"}
             </span>
           </div>
 
-          <InterferenceWorkspaceNav />
-        </section>
-
-        <section className={styles.content}>
-          <div className={styles.stack}>
-            <section className={`surface ${styles.panel}`}>
-              <div>
-                <h2 className={styles.panelTitle}>干扰工作区</h2>
-                <p className={styles.panelText}>
-                  当前四块业务内容都可以从这里进入。后续你要继续做“部门化重构”时，
-                  这块就是干扰子部门自己的工作台主页。
-                </p>
-              </div>
-
-              <div className={styles.grid}>
-                <article className={styles.card}>
-                  <div className={styles.cardTitle}>数据中心</div>
-                  <div className={styles.cardCopy}>
-                    管理干扰测量数据集、上传源文件、查看热力图和测量点。
-                  </div>
-                  <div className={styles.actions}>
-                    <Link className="button" href="/dashboard/datasets">
-                      打开数据中心
-                    </Link>
-                  </div>
-                </article>
-
-                <article className={styles.card}>
-                  <div className={styles.cardTitle}>工具仓库</div>
-                  <div className={styles.cardCopy}>
-                    统一沉淀干扰分析、采集、辅助处理相关的工具文件。
-                  </div>
-                  <div className={styles.actions}>
-                    <Link className="buttonGhost" href="/dashboard/tools">
-                      打开工具仓库
-                    </Link>
-                  </div>
-                </article>
-
-                <article className={styles.card}>
-                  <div className={styles.cardTitle}>主机管理</div>
-                  <div className={styles.cardCopy}>
-                    连接干扰实验或现场运行主机，保留远程命令能力。
-                  </div>
-                  <div className={styles.actions}>
-                    <Link className="buttonGhost" href="/dashboard/hosts">
-                      打开主机管理
-                    </Link>
-                  </div>
-                </article>
-
-                <article className={styles.card}>
-                  <div className={styles.cardTitle}>命令审计</div>
-                  <div className={styles.cardCopy}>
-                    跟踪干扰工作区下的远程命令执行结果和审计记录。
-                  </div>
-                  <div className={styles.actions}>
-                    <Link className="buttonGhost" href="/dashboard/commands">
-                      打开命令审计
-                    </Link>
-                  </div>
-                </article>
-              </div>
-            </section>
+          <div className={styles.portalHelp}>
+            <h2 className={styles.portalHelpTitle}>使用说明</h2>
+            <p className={styles.portalHelpText}>
+              本页为干扰子部门门户。权限与组织信息由企业管理员维护；可见模块随部门与功能权限策略变化。
+            </p>
+            <ul className={styles.portalHelpList}>
+              <li>请通过左侧导航在各模块间切换，面包屑用于确认当前位置。</li>
+              <li>无权限的模块在侧栏中不展示，亦无法访问对应路径。</li>
+            </ul>
           </div>
-
-          <aside className={styles.stack}>
-            <section className={`surface ${styles.panel}`}>
-              <div>
-                <h2 className={styles.panelTitle}>当前归属说明</h2>
-                <p className={styles.panelText}>
-                  后续其他子部门开始建设时，可以直接仿照干扰页建立自己的模块入口。
-                </p>
-              </div>
-              <div className={styles.list}>
-                <div className={styles.listItem}>
-                  <span className={styles.listLabel}>当前状态</span>
-                  <span className={styles.listValue}>干扰已接管全部原有内容页</span>
-                </div>
-                <div className={styles.listItem}>
-                  <span className={styles.listLabel}>后续扩展</span>
-                  <span className={styles.listValue}>RSE、EMC、射频可独立补业务模块</span>
-                </div>
-              </div>
-            </section>
-          </aside>
-        </section>
-      </main>
+        </footer>
+      </div>
     </DepartmentAccessGuard>
   );
 }

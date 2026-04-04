@@ -32,6 +32,8 @@ class BaselineTokenObtainPairSerializer(TokenObtainPairSerializer):
 
     def validate(self, attrs):
         data = super().validate(attrs)
+        if not getattr(self.user, "is_active", True):
+            raise AuthenticationFailed("账号已被禁用，请联系管理员。", code="account_disabled")
         if not is_user_approved(self.user):
             raise AuthenticationFailed("账号尚未审批通过。", code="not_approved")
 

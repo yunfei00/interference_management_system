@@ -7,15 +7,21 @@ import { hasDashboardPermission } from "@/lib/dashboard-navigation";
 import { defaultFetchMessages } from "@/lib/fetch-messages";
 import { usePaginatedResource } from "@/lib/use-paginated-resource";
 
+import { DepartmentAccessGuard } from "./department-access-guard";
 import { useDashboardSession } from "./dashboard-session-provider";
 import { InterferenceWorkspaceBanner } from "./interference-workspace-banner";
 import styles from "./management-page.module.css";
+
+const COMMANDS_ACCESS = [
+  "department.interference.view",
+  "interference.commands.view",
+];
 
 export function CommandsPage() {
   const { state } = useDashboardSession();
   const canView =
     state.kind === "ready" &&
-    hasDashboardPermission(state.data.permissions, "ops.command.view");
+    hasDashboardPermission(state.data.permissions, COMMANDS_ACCESS);
   const [page, setPage] = useState(1);
 
   const commandsState = usePaginatedResource<CommandTaskItem>({
@@ -25,19 +31,12 @@ export function CommandsPage() {
     messages: defaultFetchMessages,
   });
 
-  if (state.kind !== "ready" || !canView) {
-    return (
-      <section className={styles.content}>
-        <div className={styles.stack}>
-          <section className={`surface ${styles.panel}`}>
-            <div className={styles.empty}>当前账号无法访问命令审计。</div>
-          </section>
-        </div>
-      </section>
-    );
-  }
-
   return (
+    <DepartmentAccessGuard
+      description="当前账号没有查看命令审计的权限。"
+      requiredPermissions={COMMANDS_ACCESS}
+      title="无法访问命令审计"
+    >
     <section className={styles.content}>
       <div className={styles.stack}>
         <InterferenceWorkspaceBanner
@@ -164,5 +163,6 @@ export function CommandsPage() {
         </section>
       </aside>
     </section>
+    </DepartmentAccessGuard>
   );
 }

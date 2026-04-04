@@ -1,5 +1,6 @@
-import { HostsPage } from "@/components/hosts-page";
+import type { Route } from "next";
+import { permanentRedirect } from "next/navigation";
 
-export default function DashboardHostsPage() {
-  return <HostsPage />;
+export default function LegacyHostsRedirectPage() {
+  permanentRedirect("/dashboard/electromagnetic/interference/hosts" as Route);
 }

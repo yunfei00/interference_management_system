@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import type { ToolDetailPayload, ToolListItem } from "@/lib/contracts";
 import type {
@@ -8,10 +8,7 @@ import type {
   QueryParams,
   ResourceState,
 } from "@/lib/browser-bff";
-import {
-  fetchToolDetailWithFallback,
-  fetchToolsListWithFallback,
-} from "@/lib/tools-bff-client";
+import { fetchToolDetail, fetchToolsList } from "@/lib/tools-bff-client";
 
 const DEFAULT_PAGE_SIZE = 10;
 
@@ -51,7 +48,7 @@ export function useToolsPaginatedResource({
     }
 
     async function load() {
-      const next = await fetchToolsListWithFallback(page, pageSize);
+      const next = await fetchToolsList(page, pageSize);
       if (!cancelled) {
         setResolvedState({ requestKey, value: next });
       }
@@ -75,25 +72,31 @@ export function useToolsPaginatedResource({
   return resolvedState.value;
 }
 
+/**
+ * 工具详情：初始自动拉取；操作成功后请调用 refetch() 重新从后端取数（不依赖 mock / reloadKey）。
+ */
 export function useToolDetailBffResource({
   toolId,
   enabled,
 }: {
   toolId: string;
   enabled: boolean;
-}): ResourceState<ToolDetailPayload> {
-  const requestKey = JSON.stringify({ toolId, enabled });
-
-  const [resolvedState, setResolvedState] = useState<{
-    requestKey: string;
-    value: ResourceState<ToolDetailPayload>;
-  }>({
-    requestKey: "",
-    value: { kind: "loading" },
+}): {
+  state: ResourceState<ToolDetailPayload>;
+  refetch: () => Promise<void>;
+} {
+  const [state, setState] = useState<ResourceState<ToolDetailPayload>>({
+    kind: "loading",
   });
+  const [refreshNonce, setRefreshNonce] = useState(0);
+
+  const refetch = useCallback(async () => {
+    setRefreshNonce((value) => value + 1);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
+
     if (!enabled || !toolId) {
       return () => {
         cancelled = true;
@@ -101,9 +104,9 @@ export function useToolDetailBffResource({
     }
 
     async function load() {
-      const next = await fetchToolDetailWithFallback(toolId);
+      const next = await fetchToolDetail(toolId);
       if (!cancelled) {
-        setResolvedState({ requestKey, value: next });
+        setState(next);
       }
     }
 
@@ -112,15 +115,10 @@ export function useToolDetailBffResource({
     return () => {
       cancelled = true;
     };
-  }, [enabled, toolId, requestKey]);
+  }, [enabled, toolId, refreshNonce]);
 
-  if (!enabled || !toolId) {
-    return { kind: "loading" };
-  }
-
-  if (resolvedState.requestKey !== requestKey) {
-    return { kind: "loading" };
-  }
-
-  return resolvedState.value;
+  return {
+    state: !enabled || !toolId ? { kind: "loading" } : state,
+    refetch,
+  };
 }

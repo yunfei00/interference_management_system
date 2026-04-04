@@ -9,7 +9,11 @@ from rest_framework.response import Response
 
 from apps.common.api import BaselineAPIView, BaselineGenericViewSet, BaselineModelViewSet
 from apps.common.api_contract import build_api_envelope
-from apps.common.permissions import StaffPermission
+from apps.common.permissions import (
+    CommandAuditPermission,
+    HostWorkspacePermission,
+    StaffPermission,
+)
 
 from .models import Host
 from .selectors import get_command_task_queryset, get_host_queryset
@@ -20,7 +24,11 @@ from .services import execute_batch_command, execute_command_for_host
 @extend_schema(tags=["Ops"])
 class HostViewSet(BaselineModelViewSet):
     serializer_class = HostSerializer
-    permission_classes = [IsAuthenticated, StaffPermission]
+
+    def get_permissions(self):
+        if self.action == "run_command":
+            return [IsAuthenticated(), StaffPermission()]
+        return [IsAuthenticated(), HostWorkspacePermission()]
 
     def get_queryset(self):
         return get_host_queryset(
@@ -53,7 +61,7 @@ class HostViewSet(BaselineModelViewSet):
 @extend_schema(tags=["Ops"])
 class CommandTaskViewSet(BaselineGenericViewSet, viewsets.ReadOnlyModelViewSet):
     serializer_class = CommandTaskSerializer
-    permission_classes = [IsAuthenticated, StaffPermission]
+    permission_classes = [IsAuthenticated, CommandAuditPermission]
 
     def get_queryset(self):
         return get_command_task_queryset()

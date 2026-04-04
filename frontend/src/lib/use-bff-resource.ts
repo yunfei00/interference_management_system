@@ -14,11 +14,14 @@ export function useBffResource<T>({
   query = {},
   enabled,
   messages,
+  reloadKey = 0,
 }: {
   endpoint: string;
   query?: QueryParams;
   enabled: boolean;
   messages: BffFetchMessages;
+  /** 递增则重新请求，不会加入 URL 查询参数 */
+  reloadKey?: number;
 }) {
   const [resolvedState, setResolvedState] = useState<{
     requestKey: string;
@@ -31,6 +34,7 @@ export function useBffResource<T>({
     endpoint,
     query,
     messages,
+    reloadKey,
   });
 
   useEffect(() => {

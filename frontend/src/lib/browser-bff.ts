@@ -29,6 +29,7 @@ export async function fetchBffResource<T>(
   try {
     const response = await fetch(path, {
       cache: "no-store",
+      credentials: "include",
     });
     const payload = (await response.json()) as ApiEnvelope<T | null>;
 

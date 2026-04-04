@@ -9,20 +9,27 @@ import type {
   DatasetItem,
   MeasurementItem,
 } from "@/lib/contracts";
+import { apiFetch } from "@/lib/api-client";
 import { hasDashboardPermission } from "@/lib/dashboard-navigation";
 import { defaultFetchMessages } from "@/lib/fetch-messages";
 import { useBffResource } from "@/lib/use-bff-resource";
 import { usePaginatedResource } from "@/lib/use-paginated-resource";
 
+import { DepartmentAccessGuard } from "./department-access-guard";
 import { useDashboardSession } from "./dashboard-session-provider";
 import { InterferenceWorkspaceBanner } from "./interference-workspace-banner";
 import styles from "./management-page.module.css";
+
+const DATAHUB_ACCESS = [
+  "department.interference.view",
+  "interference.datahub.view",
+];
 
 export function DatasetsPage() {
   const { state } = useDashboardSession();
   const canView =
     state.kind === "ready" &&
-    hasDashboardPermission(state.data.permissions, "datahub.view");
+    hasDashboardPermission(state.data.permissions, DATAHUB_ACCESS);
   const [page, setPage] = useState(1);
   const [refreshKey, setRefreshKey] = useState(0);
   const [name, setName] = useState("");
@@ -56,7 +63,7 @@ export function DatasetsPage() {
 
   async function createDataset() {
     setFeedback(null);
-    const response = await fetch("/api/datahub/datasets", {
+    const response = await apiFetch("/api/datahub/datasets", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -83,7 +90,7 @@ export function DatasetsPage() {
     setFeedback(null);
     const formData = new FormData();
     formData.append("file", selectedFile);
-    const response = await fetch(
+    const response = await apiFetch(
       `/api/datahub/datasets/${selectedDatasetId}/upload`,
       {
         method: "POST",
@@ -102,20 +109,13 @@ export function DatasetsPage() {
     setFeedback(`上传成功，新增 ${payload.data.inserted} 条测量记录。`);
   }
 
-  if (state.kind !== "ready" || !canView) {
-    return (
-      <section className={styles.content}>
-        <div className={styles.stack}>
-          <section className={`surface ${styles.panel}`}>
-            <div className={styles.empty}>当前账号无法访问数据中心。</div>
-          </section>
-        </div>
-      </section>
-    );
-  }
-
   return (
-    <section className={styles.content}>
+    <DepartmentAccessGuard
+      description="当前账号没有进入数据中心的权限。"
+      requiredPermissions={DATAHUB_ACCESS}
+      title="无法访问数据中心"
+    >
+      <section className={styles.content}>
       <div className={styles.stack}>
         <InterferenceWorkspaceBanner
           description="原来的数据集、上传、热力图和测量点功能，现在统一归属到电磁事业部的干扰工作区。"
@@ -359,5 +359,6 @@ export function DatasetsPage() {
         </section>
       </aside>
     </section>
+    </DepartmentAccessGuard>
   );
 }

@@ -12,25 +12,26 @@ DEPARTMENT_PERMISSIONS = {
     "department.rf.view",
 }
 
-INTERFERENCE_WORKSPACE_PERMISSIONS = {
-    "datahub.view",
-    "datahub.create",
-    "datahub.upload",
-    "tools.view",
-    "tools.upload",
-    "tools.download",
+INTERFERENCE_FEATURE_PERMISSIONS = {
+    "interference.dashboard.view",
+    "interference.datahub.view",
+    "interference.tools.view",
+    "interference.hosts.view",
+    "interference.commands.view",
 }
 
-BASE_PERMISSIONS = {
-    "overview.view",
-    *DEPARTMENT_PERMISSIONS,
-}
+TOOLS_MANAGE_KEY = "tools.manage"
+
+RSE_PORTAL_PERMISSIONS = frozenset({"rse.dashboard.view"})
+EMC_PORTAL_PERMISSIONS = frozenset({"emc.dashboard.view"})
+RF_PORTAL_PERMISSIONS = frozenset({"rf.dashboard.view"})
 
 STAFF_PERMISSIONS = {
     "ops.host.view",
     "ops.host.manage",
     "ops.command.view",
     "ops.command.run",
+    "admin.users.view",
 }
 
 
@@ -51,16 +52,36 @@ def get_user_department_codes(user) -> set[str]:
     return codes
 
 
+def _add_interference_bundle(target: set[str], *, staff: bool) -> None:
+    target.update(INTERFERENCE_FEATURE_PERMISSIONS)
+    target.update(
+        {
+            "datahub.view",
+            "datahub.create",
+            "datahub.upload",
+        },
+    )
+    target.add("tools.view")
+    target.add("tools.download")
+    if staff:
+        target.add("tools.upload")
+        target.add(TOOLS_MANAGE_KEY)
+        target.update(STAFF_PERMISSIONS)
+
+
 def get_user_perm_keys(user) -> set[str]:
     if not is_user_approved(user):
         return set()
 
-    permissions = {"overview.view"}
+    permissions: set[str] = set()
 
     if getattr(user, "is_staff", False) or getattr(user, "is_superuser", False):
+        permissions.add("overview.view")
         permissions.update(DEPARTMENT_PERMISSIONS)
-        permissions.update(INTERFERENCE_WORKSPACE_PERMISSIONS)
-        permissions.update(STAFF_PERMISSIONS)
+        _add_interference_bundle(permissions, staff=True)
+        permissions.update(RSE_PORTAL_PERMISSIONS)
+        permissions.update(EMC_PORTAL_PERMISSIONS)
+        permissions.update(RF_PORTAL_PERMISSIONS)
         return permissions
 
     department_codes = get_user_department_codes(user)
@@ -69,13 +90,16 @@ def get_user_perm_keys(user) -> set[str]:
         permissions.add("department.electromagnetic.view")
     if "interference" in department_codes:
         permissions.add("department.interference.view")
-        permissions.update(INTERFERENCE_WORKSPACE_PERMISSIONS)
+        _add_interference_bundle(permissions, staff=False)
     if "rse" in department_codes:
         permissions.add("department.rse.view")
+        permissions.update(RSE_PORTAL_PERMISSIONS)
     if "emc" in department_codes:
         permissions.add("department.emc.view")
+        permissions.update(EMC_PORTAL_PERMISSIONS)
     if "rf" in department_codes:
         permissions.add("department.rf.view")
+        permissions.update(RF_PORTAL_PERMISSIONS)
 
     return permissions
 
@@ -108,10 +132,37 @@ def build_menu_tree_for_user(user) -> list[dict]:
             "icon": "gauge",
             "sort": 10,
             "status": 1,
-            "visible": True,
+            "visible": visible("overview.view"),
             "is_external": False,
             "permission_key": "overview.view",
             "children": [],
+        },
+        {
+            "id": 88,
+            "code": "system_admin",
+            "name": "系统管理",
+            "path": "/dashboard/admin/users",
+            "icon": "settings",
+            "sort": 15,
+            "status": 1,
+            "visible": visible("admin.users.view"),
+            "is_external": False,
+            "permission_key": "admin.users.view",
+            "children": [
+                {
+                    "id": 89,
+                    "code": "admin_users",
+                    "name": "用户管理",
+                    "path": "/dashboard/admin/users",
+                    "icon": "users",
+                    "sort": 10,
+                    "status": 1,
+                    "visible": visible("admin.users.view"),
+                    "is_external": False,
+                    "permission_key": "admin.users.view",
+                    "children": [],
+                },
+            ],
         },
         {
             "id": 2,
@@ -133,9 +184,62 @@ def build_menu_tree_for_user(user) -> list[dict]:
                     "icon": "radar",
                     "sort": 10,
                     "status": 1,
-                    "visible": visible("department.interference.view"),
+                    "visible": visible("department.interference.view")
+                    and visible("interference.dashboard.view"),
                     "is_external": False,
-                    "permission_key": "department.interference.view",
+                    "permission_key": "interference.dashboard.view",
+                    "children": [],
+                },
+                {
+                    "id": 211,
+                    "code": "interference_datasets",
+                    "name": "数据中心",
+                    "path": "/dashboard/electromagnetic/interference/datasets",
+                    "icon": "database",
+                    "sort": 11,
+                    "status": 1,
+                    "visible": visible("interference.datahub.view"),
+                    "is_external": False,
+                    "permission_key": "interference.datahub.view",
+                    "children": [],
+                },
+                {
+                    "id": 212,
+                    "code": "interference_tools",
+                    "name": "工具仓库",
+                    "path": "/dashboard/electromagnetic/interference/tools",
+                    "icon": "box",
+                    "sort": 12,
+                    "status": 1,
+                    "visible": visible("interference.tools.view"),
+                    "is_external": False,
+                    "permission_key": "interference.tools.view",
+                    "children": [],
+                },
+                {
+                    "id": 213,
+                    "code": "interference_hosts",
+                    "name": "主机管理",
+                    "path": "/dashboard/electromagnetic/interference/hosts",
+                    "icon": "server",
+                    "sort": 13,
+                    "status": 1,
+                    "visible": visible("interference.hosts.view"),
+                    "is_external": False,
+                    "permission_key": "interference.hosts.view",
+                    "children": [],
+                },
+                {
+                    "id": 214,
+                    "code": "interference_commands",
+                    "name": "命令审计",
+                    "path": "/dashboard/electromagnetic/interference/commands",
+                    "icon": "terminal",
+                    "sort": 14,
+                    "status": 1,
+                    "visible": visible("interference.commands.view"),
+                    "is_external": False,
+                    "permission_key": "interference.commands.view",
                     "children": [],
                 },
                 {
@@ -146,9 +250,10 @@ def build_menu_tree_for_user(user) -> list[dict]:
                     "icon": "beaker",
                     "sort": 20,
                     "status": 1,
-                    "visible": visible("department.rse.view"),
+                    "visible": visible("department.rse.view")
+                    and visible("rse.dashboard.view"),
                     "is_external": False,
-                    "permission_key": "department.rse.view",
+                    "permission_key": "rse.dashboard.view",
                     "children": [],
                 },
                 {
@@ -159,9 +264,10 @@ def build_menu_tree_for_user(user) -> list[dict]:
                     "icon": "wave-square",
                     "sort": 30,
                     "status": 1,
-                    "visible": visible("department.emc.view"),
+                    "visible": visible("department.emc.view")
+                    and visible("emc.dashboard.view"),
                     "is_external": False,
-                    "permission_key": "department.emc.view",
+                    "permission_key": "emc.dashboard.view",
                     "children": [],
                 },
             ],
@@ -174,9 +280,10 @@ def build_menu_tree_for_user(user) -> list[dict]:
             "icon": "radio",
             "sort": 30,
             "status": 1,
-            "visible": visible("department.rf.view"),
+            "visible": visible("department.rf.view")
+            and visible("rf.dashboard.view"),
             "is_external": False,
-            "permission_key": "department.rf.view",
+            "permission_key": "rf.dashboard.view",
             "children": [],
         },
     ]

@@ -8,6 +8,7 @@ from drf_spectacular.views import (
 )
 from rest_framework import routers
 
+from accounts.admin_users_api import AdminUserViewSet
 from accounts.api_auth import (
     BaselineTokenObtainPairView,
     BaselineTokenRefreshView,
@@ -27,10 +28,20 @@ def build_api_router():
     router.register("tools", ToolViewSet, basename="tool")
     router.register("hosts", HostViewSet, basename="host")
     router.register("commands", CommandTaskViewSet, basename="command")
+    router.register("admin/users", AdminUserViewSet, basename="admin_user")
     return router
 
 
 v1_router = build_api_router()
+
+
+def build_legacy_tools_router():
+    router = routers.DefaultRouter()
+    router.register("tools", ToolViewSet, basename="legacy_tool")
+    return router
+
+
+legacy_tools_router = build_legacy_tools_router()
 
 
 urlpatterns = [
@@ -68,5 +79,6 @@ urlpatterns = [
         BatchCommandAPIView.as_view(),
         name="api_v1_batch_commands",
     ),
+    path("", include(legacy_tools_router.urls)),
     path("v1/", include(v1_router.urls)),
 ]

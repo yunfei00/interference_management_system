@@ -39,6 +39,9 @@ export async function POST(request: Request) {
 
   const result = await loginWithPassword(username, password);
   if (!result.ok) {
+    if (process.env.NODE_ENV === "development") {
+      console.warn("[auth][login] Django token 请求失败:", result.code, result.message);
+    }
     return NextResponse.json(
       buildEnvelope(null, {
         success: false,
@@ -68,6 +71,12 @@ export async function POST(request: Request) {
     access: result.data.access,
     refresh: result.data.refresh,
   });
+
+  if (process.env.NODE_ENV === "development") {
+    console.info(
+      "[auth][login] 成功；已通过 NextResponse.cookies 下发 httpOnly 令牌（绑定当前请求的 Host）。",
+    );
+  }
 
   return response;
 }

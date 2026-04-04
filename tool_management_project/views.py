@@ -1,20 +1,15 @@
 
-from django.shortcuts import render, redirect
 from django.http import FileResponse
-from .models import Tool
-from .forms import ToolForm
+from django.shortcuts import redirect, render
+
 from rest_framework import viewsets
-from .serializers import ToolSerializer
+
+from .models import Tool
+from .serializers import ToolListSerializer as ToolSerializer
+
 
 def upload_tool(request):
-    if request.method == "POST":
-        form = ToolForm(request.POST, request.FILES)
-        if form.is_valid():
-            form.save()
-            return redirect('tool_list')
-    else:
-        form = ToolForm()
-    return render(request, 'upload_tool.html', {'form': form})
+    return redirect("/dashboard/electromagnetic/interference/tools/upload")
 
 def tool_list(request):
     tools = Tool.objects.all()
@@ -22,9 +17,13 @@ def tool_list(request):
 
 def download_tool(request, tool_id):
     tool = Tool.objects.get(id=tool_id)
-    file_path = tool.file.path
-    response = FileResponse(open(file_path, 'rb'))
-    response['Content-Disposition'] = f'attachment; filename={tool.name}'
+    ver = tool.versions.order_by("-created_at", "-id").first()
+    if ver is None or not ver.file:
+        from django.http import Http404
+
+        raise Http404("无可下载版本")
+    response = FileResponse(ver.file.open("rb"))
+    response["Content-Disposition"] = f"attachment; filename={ver.file_name or ver.file.name}"
     return response
 
 class ToolViewSet(viewsets.ModelViewSet):

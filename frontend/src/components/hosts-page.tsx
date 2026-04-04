@@ -3,19 +3,26 @@
 import { useDeferredValue, useState, useTransition } from "react";
 
 import type { ApiEnvelope, CommandTaskItem, HostItem } from "@/lib/contracts";
+import { apiFetch } from "@/lib/api-client";
 import { hasDashboardPermission } from "@/lib/dashboard-navigation";
 import { defaultFetchMessages } from "@/lib/fetch-messages";
 import { usePaginatedResource } from "@/lib/use-paginated-resource";
 
+import { DepartmentAccessGuard } from "./department-access-guard";
 import { useDashboardSession } from "./dashboard-session-provider";
 import { InterferenceWorkspaceBanner } from "./interference-workspace-banner";
 import styles from "./management-page.module.css";
+
+const HOSTS_ACCESS = ["department.interference.view", "interference.hosts.view"];
 
 export function HostsPage() {
   const { state } = useDashboardSession();
   const canView =
     state.kind === "ready" &&
-    hasDashboardPermission(state.data.permissions, "ops.host.view");
+    hasDashboardPermission(state.data.permissions, HOSTS_ACCESS);
+  const isStaff =
+    state.kind === "ready" &&
+    (state.data.user.is_staff || state.data.user.is_superuser);
   const [page, setPage] = useState(1);
   const [refreshKey, setRefreshKey] = useState(0);
   const [query, setQuery] = useState("");
@@ -46,7 +53,7 @@ export function HostsPage() {
 
   async function createHost() {
     setFeedback(null);
-    const response = await fetch("/api/ops/hosts", {
+    const response = await apiFetch("/api/ops/hosts", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -80,7 +87,7 @@ export function HostsPage() {
       return;
     }
     setFeedback(null);
-    const response = await fetch(`/api/ops/hosts/${selectedHostId}/commands`, {
+    const response = await apiFetch(`/api/ops/hosts/${selectedHostId}/commands`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -99,19 +106,12 @@ export function HostsPage() {
     setFeedback(`命令已提交，任务 ID：${payload.data.id}`);
   }
 
-  if (state.kind !== "ready" || !canView) {
-    return (
-      <section className={styles.content}>
-        <div className={styles.stack}>
-          <section className={`surface ${styles.panel}`}>
-            <div className={styles.empty}>当前账号无法访问主机管理。</div>
-          </section>
-        </div>
-      </section>
-    );
-  }
-
   return (
+    <DepartmentAccessGuard
+      description="当前账号没有进入主机管理的权限。"
+      requiredPermissions={HOSTS_ACCESS}
+      title="无法访问主机管理"
+    >
     <section className={styles.content}>
       <div className={styles.stack}>
         <InterferenceWorkspaceBanner
@@ -245,108 +245,124 @@ export function HostsPage() {
       </div>
 
       <aside className={styles.stack}>
-        <section className={`surface ${styles.panel}`}>
-          <div className={styles.panelHeader}>
-            <div>
-              <h2 className={styles.panelTitle}>新增主机</h2>
-              <p className={styles.panelText}>适合先把现有 Agent 主机纳入新的工作台管理。</p>
-            </div>
-          </div>
-          <div className={styles.filters}>
-            <label className={styles.field}>
-              <span className={styles.label}>主机名称</span>
-              <input className={styles.input} onChange={(event) => setName(event.target.value)} value={name} />
-            </label>
-            <label className={styles.field}>
-              <span className={styles.label}>IP</span>
-              <input className={styles.input} onChange={(event) => setIp(event.target.value)} value={ip} />
-            </label>
-            <label className={styles.field}>
-              <span className={styles.label}>端口</span>
-              <input className={styles.input} onChange={(event) => setPort(event.target.value)} value={port} />
-            </label>
-            <label className={styles.field}>
-              <span className={styles.label}>Token</span>
-              <input className={styles.input} onChange={(event) => setToken(event.target.value)} value={token} />
-            </label>
-            <label className={styles.field}>
-              <span className={styles.label}>备注</span>
-              <input className={styles.input} onChange={(event) => setNote(event.target.value)} value={note} />
-            </label>
-            <div className={styles.field}>
-              <span className={styles.label}>保存</span>
-              <button
-                className="button"
-                onClick={() =>
-                  startTransition(() => {
-                    void createHost();
-                  })
-                }
-                type="button"
-              >
-                {isPending ? "保存中..." : "新增主机"}
-              </button>
-            </div>
-          </div>
-        </section>
+        {isStaff ? (
+          <>
+            <section className={`surface ${styles.panel}`}>
+              <div className={styles.panelHeader}>
+                <div>
+                  <h2 className={styles.panelTitle}>新增主机</h2>
+                  <p className={styles.panelText}>适合先把现有 Agent 主机纳入新的工作台管理。</p>
+                </div>
+              </div>
+              <div className={styles.filters}>
+                <label className={styles.field}>
+                  <span className={styles.label}>主机名称</span>
+                  <input className={styles.input} onChange={(event) => setName(event.target.value)} value={name} />
+                </label>
+                <label className={styles.field}>
+                  <span className={styles.label}>IP</span>
+                  <input className={styles.input} onChange={(event) => setIp(event.target.value)} value={ip} />
+                </label>
+                <label className={styles.field}>
+                  <span className={styles.label}>端口</span>
+                  <input className={styles.input} onChange={(event) => setPort(event.target.value)} value={port} />
+                </label>
+                <label className={styles.field}>
+                  <span className={styles.label}>Token</span>
+                  <input className={styles.input} onChange={(event) => setToken(event.target.value)} value={token} />
+                </label>
+                <label className={styles.field}>
+                  <span className={styles.label}>备注</span>
+                  <input className={styles.input} onChange={(event) => setNote(event.target.value)} value={note} />
+                </label>
+                <div className={styles.field}>
+                  <span className={styles.label}>保存</span>
+                  <button
+                    className="button"
+                    onClick={() =>
+                      startTransition(() => {
+                        void createHost();
+                      })
+                    }
+                    type="button"
+                  >
+                    {isPending ? "保存中..." : "新增主机"}
+                  </button>
+                </div>
+              </div>
+            </section>
 
-        <section className={`surface ${styles.panel}`}>
-          <div className={styles.panelHeader}>
-            <div>
-              <h2 className={styles.panelTitle}>远程命令</h2>
-              <p className={styles.panelText}>当前先提供单机命令入口，批量执行后续继续补齐。</p>
+            <section className={`surface ${styles.panel}`}>
+              <div className={styles.panelHeader}>
+                <div>
+                  <h2 className={styles.panelTitle}>远程命令</h2>
+                  <p className={styles.panelText}>当前先提供单机命令入口，批量执行后续继续补齐。</p>
+                </div>
+              </div>
+              <div className={styles.filters}>
+                <label className={styles.field}>
+                  <span className={styles.label}>主机 ID</span>
+                  <input
+                    className={styles.input}
+                    onChange={(event) => setSelectedHostId(event.target.value)}
+                    value={selectedHostId}
+                  />
+                </label>
+                <label className={styles.field}>
+                  <span className={styles.label}>命令</span>
+                  <select
+                    className={styles.select}
+                    onChange={(event) => setCommand(event.target.value)}
+                    value={command}
+                  >
+                    <option value="reboot">重启</option>
+                    <option value="shutdown">关机</option>
+                    <option value="service_start">启动服务</option>
+                    <option value="service_restart">重启服务</option>
+                    <option value="service_stop">停止服务</option>
+                  </select>
+                </label>
+                <label className={styles.field}>
+                  <span className={styles.label}>服务名</span>
+                  <input
+                    className={styles.input}
+                    onChange={(event) => setServiceName(event.target.value)}
+                    placeholder="服务命令时填写，例如 Spooler"
+                    value={serviceName}
+                  />
+                </label>
+                <div className={styles.field}>
+                  <span className={styles.label}>执行</span>
+                  <button
+                    className="button"
+                    onClick={() =>
+                      startTransition(() => {
+                        void runCommand();
+                      })
+                    }
+                    type="button"
+                  >
+                    {isPending ? "执行中..." : "发送命令"}
+                  </button>
+                </div>
+              </div>
+              {feedback ? <div className={styles.empty}>{feedback}</div> : null}
+            </section>
+          </>
+        ) : (
+          <section className={`surface ${styles.panel}`}>
+            <div className={styles.panelHeader}>
+              <div>
+                <h2 className={styles.panelTitle}>运维操作</h2>
+                <p className={styles.panelText}>
+                  主机登记与远程命令执行仅对企业管理员开放，业务用户可在此查看清单与状态。
+                </p>
+              </div>
             </div>
-          </div>
-          <div className={styles.filters}>
-            <label className={styles.field}>
-              <span className={styles.label}>主机 ID</span>
-              <input
-                className={styles.input}
-                onChange={(event) => setSelectedHostId(event.target.value)}
-                value={selectedHostId}
-              />
-            </label>
-            <label className={styles.field}>
-              <span className={styles.label}>命令</span>
-              <select
-                className={styles.select}
-                onChange={(event) => setCommand(event.target.value)}
-                value={command}
-              >
-                <option value="reboot">重启</option>
-                <option value="shutdown">关机</option>
-                <option value="service_start">启动服务</option>
-                <option value="service_restart">重启服务</option>
-                <option value="service_stop">停止服务</option>
-              </select>
-            </label>
-            <label className={styles.field}>
-              <span className={styles.label}>服务名</span>
-              <input
-                className={styles.input}
-                onChange={(event) => setServiceName(event.target.value)}
-                placeholder="服务命令时填写，例如 Spooler"
-                value={serviceName}
-              />
-            </label>
-            <div className={styles.field}>
-              <span className={styles.label}>执行</span>
-              <button
-                className="button"
-                onClick={() =>
-                  startTransition(() => {
-                    void runCommand();
-                  })
-                }
-                type="button"
-              >
-                {isPending ? "执行中..." : "发送命令"}
-              </button>
-            </div>
-          </div>
-          {feedback ? <div className={styles.empty}>{feedback}</div> : null}
-        </section>
+          </section>
+        )}
       </aside>
     </section>
+    </DepartmentAccessGuard>
   );
 }

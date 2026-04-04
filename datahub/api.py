@@ -9,7 +9,7 @@ from rest_framework.viewsets import ModelViewSet
 from rest_framework.exceptions import ValidationError
 
 from apps.common.api import BaselineModelViewSet
-from apps.common.permissions import ApprovedUserPermission
+from apps.common.permissions import MappedPermission
 
 from .selectors import get_dataset_queryset, get_measurement_queryset
 from .serializers import (
@@ -25,7 +25,38 @@ from .utils import heatmap_svg_from_queryset
 @extend_schema(tags=["Datahub"])
 class DatasetViewSet(BaselineModelViewSet):
     serializer_class = DatasetSerializer
-    permission_classes = [IsAuthenticated, ApprovedUserPermission]
+    permission_classes = [IsAuthenticated, MappedPermission]
+    permission_map = {
+        "list": ["department.interference.view", "interference.datahub.view"],
+        "retrieve": ["department.interference.view", "interference.datahub.view"],
+        "measurements": ["department.interference.view", "interference.datahub.view"],
+        "heatmap": ["department.interference.view", "interference.datahub.view"],
+        "create": [
+            "department.interference.view",
+            "interference.datahub.view",
+            "datahub.create",
+        ],
+        "update": [
+            "department.interference.view",
+            "interference.datahub.view",
+            "datahub.create",
+        ],
+        "partial_update": [
+            "department.interference.view",
+            "interference.datahub.view",
+            "datahub.create",
+        ],
+        "destroy": [
+            "department.interference.view",
+            "interference.datahub.view",
+            "datahub.create",
+        ],
+        "upload": [
+            "department.interference.view",
+            "interference.datahub.view",
+            "datahub.upload",
+        ],
+    }
 
     def get_queryset(self):
         return get_dataset_queryset(self.request.user)

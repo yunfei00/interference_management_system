@@ -41,9 +41,12 @@ export async function proxyProtectedJson<T>(path: string, init?: RequestInit) {
     return response;
   }
 
-  const response = NextResponse.json(buildEnvelope(result.data), {
-    status: result.status,
-  });
+  const response = NextResponse.json(
+    buildEnvelope(result.data === undefined ? null : result.data),
+    {
+      status: result.status,
+    },
+  );
   applyRefreshedCookies(response, result);
   return response;
 }

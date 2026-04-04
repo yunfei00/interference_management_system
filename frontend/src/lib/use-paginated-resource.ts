@@ -13,16 +13,19 @@ export function usePaginatedResource<T>({
   query,
   enabled,
   messages,
+  reloadKey = 0,
 }: {
   endpoint: string;
   query: QueryParams;
   enabled: boolean;
   messages: PaginatedFetchMessages;
+  reloadKey?: number;
 }) {
   return useBffResource<PaginatedPayload<T>>({
     endpoint,
     query,
     enabled,
     messages,
+    reloadKey,
   }) as PaginatedResourceState<T>;
 }

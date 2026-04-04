@@ -3,17 +3,16 @@
 import Link from "next/link";
 
 import { DepartmentAccessGuard } from "./department-access-guard";
-import { DashboardNav } from "./dashboard-nav";
 import styles from "./department-pages.module.css";
 
 export function ElectromagneticPage() {
   return (
     <DepartmentAccessGuard
       description="当前账号没有进入电磁事业部页面的权限。"
-      permission="department.electromagnetic.view"
+      requiredPermissions={["department.electromagnetic.view"]}
       title="无法访问电磁页面"
     >
-      <main className={styles.page}>
+      <div className={styles.page}>
         <section className={`surface ${styles.hero}`}>
           <div className={styles.eyebrow}>电磁事业部</div>
           <h1 className={styles.title}>电磁下面先拆成三个子部门</h1>
@@ -21,7 +20,6 @@ export function ElectromagneticPage() {
             当前阶段，电磁是这套新系统最先落地的事业部。下面分为干扰、RSE 和 EMC，
             其中干扰页承接了原有系统的全部内容页，RSE 和 EMC 先保留为空白页面。
           </p>
-          <DashboardNav />
         </section>
 
         <section className={styles.content}>
@@ -99,7 +97,7 @@ export function ElectromagneticPage() {
             </section>
           </aside>
         </section>
-      </main>
+      </div>
     </DepartmentAccessGuard>
   );
 }

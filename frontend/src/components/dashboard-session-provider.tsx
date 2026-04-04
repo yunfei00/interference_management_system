@@ -11,6 +11,7 @@ import {
 } from "react";
 
 import type { ApiEnvelope, SessionPayload } from "@/lib/contracts";
+import { apiFetch } from "@/lib/api-client";
 
 type DashboardSessionState =
   | { kind: "loading" }
@@ -60,7 +61,7 @@ export function DashboardSessionProvider({
 
     async function loadSession() {
       try {
-        const response = await fetch("/api/session", {
+        const response = await apiFetch("/api/session", {
           cache: "no-store",
         });
         const payload = (await response.json()) as ApiEnvelope<SessionPayload | null>;
@@ -75,6 +76,13 @@ export function DashboardSessionProvider({
         }
 
         if (!response.ok || !payload.success || !payload.data) {
+          if (process.env.NODE_ENV === "development") {
+            console.warn(
+              "[auth][session] 拉取失败:",
+              response.status,
+              payload.message,
+            );
+          }
           commitError(payload.message || "无法加载当前会话。");
           return;
         }

@@ -61,6 +61,27 @@ export type AuthUser = {
   updated_at: string;
 };
 
+export type AdminDepartmentOption = {
+  id: number;
+  code: string;
+  full_name: string;
+};
+
+export type AdminUserRow = {
+  id: number;
+  username: string;
+  display_name: string;
+  department: number | null;
+  department_full_name: string | null;
+  role: "user" | "admin" | "superuser";
+  is_active: boolean;
+  is_staff: boolean;
+  is_superuser: boolean;
+  approve_status: string;
+  last_login: string | null;
+  date_joined: string;
+};
+
 export type MenuItem = {
   id: number;
   code: string;
@@ -105,18 +126,51 @@ export type DatasetDetail = DatasetItem & {
   files: DataFileItem[];
 };
 
-export type ToolItem = {
+/** 工具版本（列表嵌套或详情子表） */
+export type ToolVersionRow = {
+  id: number;
+  version: string;
+  release_notes: string;
+  changelog: string;
+  file_name: string;
+  file_size: number;
+  checksum: string;
+  is_latest: boolean;
+  created_at: string;
+  created_by: number | null;
+  created_by_username: string | null;
+  download_path: string;
+  /** 后端可读时返回存储路径，可选 */
+  file?: string | null;
+};
+
+/** 工具仓库列表行 */
+export type ToolListItem = {
   id: number;
   name: string;
-  version: string;
-  description: string;
-  file: string;
-  filename: string;
-  download_path: string;
-  uploaded_by: number | null;
-  uploaded_by_username: string | null;
-  uploaded_at: string;
+  code: string;
+  category: string;
+  department: string;
+  summary: string;
+  detail: string;
+  status: string;
+  latest_version: string;
+  icon: string;
+  tags: string;
+  created_by_username: string | null;
+  created_at: string;
+  updated_at: string;
+  versions_count: number;
 };
+
+/** 工具详情（含版本列表） */
+export type ToolDetailPayload = ToolListItem & {
+  created_by: number | null;
+  versions: ToolVersionRow[];
+};
+
+/** @deprecated 请使用 ToolListItem */
+export type ToolItem = ToolListItem;
 
 export type HostMetricItem = {
   id: number;

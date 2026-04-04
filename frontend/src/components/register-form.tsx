@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 
 import type { ApiEnvelope, RegistrationDepartmentOption } from "@/lib/contracts";
+import { apiFetch } from "@/lib/api-client";
 
 import styles from "./login-form.module.css";
 
@@ -37,7 +38,7 @@ export function RegisterForm({
     let cancelled = false;
     void (async () => {
       try {
-        const response = await fetch("/api/auth/register/departments");
+        const response = await apiFetch("/api/auth/register/departments");
         const payload = (await response.json()) as ApiEnvelope<
           RegistrationDepartmentOption[] | null
         >;
@@ -110,7 +111,7 @@ export function RegisterForm({
 
     setSubmitting(true);
     try {
-      const response = await fetch("/api/auth/register", {
+      const response = await apiFetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),

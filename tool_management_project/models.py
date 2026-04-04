@@ -1,16 +1,88 @@
+from __future__ import annotations
 
+from django.conf import settings
 from django.db import models
-
-from accounts.models import User
+from django.utils import timezone
 
 
 class Tool(models.Model):
-    name = models.CharField(max_length=200, verbose_name="工具名称")
-    description = models.TextField(verbose_name="工具描述")
-    file = models.FileField(upload_to='tools/', verbose_name="工具文件")
-    version = models.CharField(max_length=50, verbose_name='版本')
-    uploaded_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, verbose_name="上传者")
-    uploaded_at = models.DateTimeField(auto_now_add=True, verbose_name="上传时间")
+    STATUS_ACTIVE = "active"
+    STATUS_TESTING = "testing"
+    STATUS_DEPRECATED = "deprecated"
+    STATUS_CHOICES = (
+        (STATUS_ACTIVE, "Active"),
+        (STATUS_TESTING, "Testing"),
+        (STATUS_DEPRECATED, "Deprecated"),
+    )
 
-    def __str__(self):
+    name = models.CharField(max_length=200)
+    code = models.SlugField(max_length=100, unique=True)
+    category = models.CharField(max_length=100)
+    department = models.CharField(max_length=100, default="电磁 / 干扰")
+    summary = models.TextField(blank=True)
+    detail = models.TextField(blank=True)
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default=STATUS_ACTIVE,
+    )
+    tags = models.CharField(max_length=200, blank=True, default="")
+    latest_version = models.CharField(max_length=50, blank=True, default="")
+    icon = models.CharField(max_length=500, blank=True, default="")
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="tools_created",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-updated_at", "-id"]
+
+    def __str__(self) -> str:
         return self.name
+
+    @property
+    def tag_list(self) -> list[str]:
+        return [part.strip() for part in self.tags.split(",") if part.strip()]
+
+
+class ToolVersion(models.Model):
+    tool = models.ForeignKey(
+        Tool,
+        on_delete=models.CASCADE,
+        related_name="versions",
+    )
+    version = models.CharField(max_length=50)
+    release_notes = models.TextField(blank=True, default="")
+    changelog = models.TextField(blank=True, default="")
+    file = models.FileField(
+        upload_to="tools/versions/%Y/%m/",
+        blank=True,
+        null=True,
+    )
+    file_name = models.CharField(max_length=255, blank=True, default="")
+    file_size = models.BigIntegerField(default=0)
+    checksum = models.CharField(max_length=128, blank=True, default="")
+    is_latest = models.BooleanField(default=False)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="tool_versions_created",
+    )
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ["-created_at", "-id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["tool", "version"],
+                name="uniq_tool_version_per_tool",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.tool.name} {self.version}"

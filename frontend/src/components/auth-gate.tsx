@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useState } from "react";
 
 import { APP_NAME } from "@/lib/public-config";
 
@@ -17,71 +17,97 @@ function brandInitials() {
   return name.length <= 2 ? name : name.slice(0, 2);
 }
 
-function AuthGateContent() {
+export type AuthGateProps = {
+  /** 无 `?tab=` 时的默认页签（如 `/register` 设为 register） */
+  defaultTab?: "login" | "register";
+};
+
+function AuthGateContent({ defaultTab = "login" }: AuthGateProps) {
   const searchParams = useSearchParams();
   const tabParam = searchParams.get("tab");
-  const [tab, setTab] = useState<"login" | "register">(
-    tabParam === "register" ? "register" : "login",
-  );
+  const forcedTab =
+    tabParam === "register" ? "register" : tabParam === "login" ? "login" : null;
 
-  useEffect(() => {
-    setTab(tabParam === "register" ? "register" : "login");
-  }, [tabParam]);
+  const [tab, setTab] = useState<"login" | "register">(defaultTab);
+  const activeTab = forcedTab ?? tab;
+
+  const loginPanelId = "auth-panel-login";
+  const registerPanelId = "auth-panel-register";
 
   return (
-    <main className={styles.page}>
-      <aside aria-label="产品标识" className={styles.brand}>
-        <div className={styles.brandInner}>
-          <div className={styles.brandMark}>{brandInitials()}</div>
-          <h1 className={styles.brandTitle}>{APP_NAME}</h1>
-          <p className={styles.brandTagline}>企业统一身份与访问入口</p>
-        </div>
-      </aside>
+    <div className={styles.shell}>
+      <main className={styles.page}>
+        <aside aria-label="产品标识" className={styles.brand}>
+          <div className={styles.brandInner}>
+            <div className={styles.brandMark}>{brandInitials()}</div>
+            <h1 className={styles.brandTitle}>{APP_NAME}</h1>
+            <p className={styles.brandTagline}>
+              企业统一身份认证。登录与注册均在站内完成，数据由公司后台统一审批与授权。
+            </p>
+            <p className={styles.brandFoot}>内部信息系统 · 受控访问</p>
+          </div>
+        </aside>
 
-      <div className={styles.panel}>
-        <div className={styles.tabs} role="tablist">
-          <button
-            aria-selected={tab === "login"}
-            className={tab === "login" ? styles.tabActive : styles.tab}
-            onClick={() => setTab("login")}
-            role="tab"
-            type="button"
-          >
-            登录
-          </button>
-          <button
-            aria-selected={tab === "register"}
-            className={tab === "register" ? styles.tabActive : styles.tab}
-            onClick={() => setTab("register")}
-            role="tab"
-            type="button"
-          >
-            注册
-          </button>
-        </div>
+        <div className={styles.panel}>
+          <div aria-label="账户操作" className={styles.tabs} role="tablist">
+            <button
+              aria-controls={loginPanelId}
+              aria-selected={activeTab === "login"}
+              className={activeTab === "login" ? styles.tabActive : styles.tab}
+              id="auth-tab-login"
+              onClick={() => setTab("login")}
+              role="tab"
+              type="button"
+            >
+              登录
+            </button>
+            <button
+              aria-controls={registerPanelId}
+              aria-selected={activeTab === "register"}
+              className={activeTab === "register" ? styles.tabActive : styles.tab}
+              id="auth-tab-register"
+              onClick={() => setTab("register")}
+              role="tab"
+              type="button"
+            >
+              注册
+            </button>
+          </div>
 
-        <div className={styles.formArea}>
-          {tab === "login" ? (
-            <LoginForm embedded />
-          ) : (
-            <RegisterForm onSwitchToLogin={() => setTab("login")} />
-          )}
+          <div className={styles.formArea}>
+            <div
+              aria-labelledby="auth-tab-login"
+              hidden={activeTab !== "login"}
+              id={loginPanelId}
+              role="tabpanel"
+            >
+              <LoginForm embedded onSwitchToRegister={() => setTab("register")} />
+            </div>
+            <div
+              aria-labelledby="auth-tab-register"
+              hidden={activeTab !== "register"}
+              id={registerPanelId}
+              role="tabpanel"
+            >
+              <RegisterForm onSwitchToLogin={() => setTab("login")} />
+            </div>
+          </div>
         </div>
-      </div>
-    </main>
+      </main>
+    </div>
   );
 }
 
-export function AuthGate() {
+export function AuthGate(props: AuthGateProps) {
   return (
     <Suspense
       fallback={
-        <main className={styles.page}>
+        <div className={styles.shell}>
           <div className={styles.fallback}>加载中…</div>
-        </main>
+        </div>
       }
     >
-      <AuthGateContent />
+      <AuthGateContent {...props} />
     </Suspense>
   );
 }

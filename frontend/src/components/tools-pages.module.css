@@ -1,0 +1,1218 @@
+/* —— 工具仓库整页布局 —— */
+.toolsPageUser,
+.toolsPageAdmin {
+  display: grid;
+  gap: 1.5rem;
+}
+
+@media (min-width: 960px) {
+  .toolsPageUser,
+  .toolsPageAdmin {
+    grid-template-columns: minmax(0, 1fr) 15.5rem;
+    align-items: start;
+  }
+}
+
+.toolsMainColumn {
+  min-width: 0;
+}
+
+.toolsAside {
+  min-width: 0;
+}
+
+.toolsPageAdmin .catalogPanel {
+  border-left: 3px solid rgba(36, 122, 116, 0.22);
+  box-shadow: inset 6px 0 0 rgba(36, 122, 116, 0.04);
+}
+
+.catalogPanel {
+  padding: 1.35rem 1.45rem;
+}
+
+.catalogHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem 1.25rem;
+  margin-bottom: 1.35rem;
+  padding-bottom: 1.1rem;
+  border-bottom: 1px solid rgba(22, 50, 63, 0.08);
+}
+
+.catalogHeaderText {
+  flex: 1;
+  min-width: min(100%, 16rem);
+}
+
+.catalogTitle {
+  margin: 0;
+  font-size: 1.22rem;
+  font-weight: 680;
+  letter-spacing: 0.02em;
+  color: var(--ink);
+}
+
+.catalogSubtitle {
+  margin: 0.4rem 0 0;
+  max-width: 40rem;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.catalogMicrohead {
+  font-weight: 650;
+  color: rgba(22, 50, 63, 0.55);
+}
+
+.uploadButton {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.48rem 1.05rem;
+  font-size: 0.86rem;
+  font-weight: 600;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(36, 122, 116, 0.42);
+  background: rgba(36, 122, 116, 0.08);
+  color: #0b5340;
+  text-decoration: none;
+  transition:
+    background 0.12s ease,
+    border-color 0.12s ease;
+}
+
+.uploadButton:hover {
+  background: rgba(36, 122, 116, 0.14);
+  border-color: rgba(36, 122, 116, 0.55);
+}
+
+.catalogAdminCorner {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.35rem;
+}
+
+.catalogAdminLink {
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: rgba(36, 122, 116, 0.92);
+  text-decoration: none;
+  padding: 0.28rem 0.15rem;
+  border-bottom: 1px solid transparent;
+}
+
+.catalogAdminLink:hover {
+  border-bottom-color: rgba(36, 122, 116, 0.45);
+}
+
+.cardMenu {
+  position: absolute;
+  top: 0.65rem;
+  right: 0.65rem;
+  z-index: 2;
+}
+
+.cardMenu summary {
+  list-style: none;
+  cursor: pointer;
+}
+
+.cardMenu summary::-webkit-details-marker {
+  display: none;
+}
+
+.cardMenuTrigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.45rem;
+  border: 1px solid rgba(22, 50, 63, 0.12);
+  background: rgba(255, 255, 255, 0.92);
+  font-size: 1rem;
+  line-height: 1;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+
+.cardMenuTrigger:hover {
+  border-color: rgba(36, 122, 116, 0.35);
+  color: #0b5340;
+}
+
+.cardMenuPanel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  min-width: 10.5rem;
+  padding: 0.35rem 0;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(22, 50, 63, 0.1);
+  background: #fff;
+  box-shadow: var(--shadow-md);
+  display: flex;
+  flex-direction: column;
+}
+
+.cardMenuPanel a {
+  padding: 0.45rem 0.85rem;
+  font-size: 0.84rem;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.cardMenuPanel a:hover {
+  background: rgba(36, 122, 116, 0.07);
+}
+
+.sidenote {
+  padding: 1rem 1.05rem;
+  border-radius: 0.65rem;
+  border: 1px solid rgba(22, 50, 63, 0.06);
+  background: rgba(22, 50, 63, 0.025);
+}
+
+.sidenoteTitle {
+  margin: 0 0 0.45rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.sidenoteBody {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+/* 列表页右侧概览 */
+.overviewCard {
+  padding: 1.1rem 1.05rem;
+  border-radius: 0.65rem;
+  border: 1px solid rgba(22, 50, 63, 0.08);
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.overviewTitle {
+  margin: 0 0 0.75rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.overviewStats {
+  margin: 0;
+}
+
+.overviewRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.65rem;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid rgba(22, 50, 63, 0.06);
+  font-size: 0.84rem;
+}
+
+.overviewRow:last-of-type {
+  border-bottom: none;
+}
+
+.overviewRow dt {
+  margin: 0;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.overviewRow dd {
+  margin: 0;
+  font-weight: 650;
+  color: var(--ink);
+  text-align: right;
+}
+
+.overviewFootnote {
+  margin: 0.65rem 0 0;
+  font-size: 0.72rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.overviewPlaceholder {
+  padding: 1rem;
+  border-radius: 0.65rem;
+  border: 1px dashed rgba(22, 50, 63, 0.1);
+  background: rgba(22, 50, 63, 0.02);
+}
+
+.overviewPlaceholderText {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.pageHeaderRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.25rem;
+}
+
+.toolTableWrap {
+  overflow-x: auto;
+}
+
+.toolNameCell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.tagRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.tagPill {
+  font-size: 0.72rem;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid rgba(22, 50, 63, 0.1);
+  background: rgba(255, 255, 255, 0.65);
+  color: var(--muted);
+}
+
+.statusPill {
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  display: inline-block;
+  width: fit-content;
+}
+
+.statusActive {
+  color: #0d6b4d;
+  background: rgba(36, 122, 116, 0.12);
+  border: 1px solid rgba(36, 122, 116, 0.28);
+}
+
+.statusTesting {
+  color: #7a5500;
+  background: rgba(212, 160, 23, 0.12);
+  border: 1px solid rgba(212, 160, 23, 0.35);
+}
+
+.statusDeprecated {
+  color: #5c6470;
+  background: rgba(92, 100, 112, 0.1);
+  border: 1px solid rgba(92, 100, 112, 0.22);
+}
+
+.toolGrid {
+  display: grid;
+  gap: 1.25rem;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (min-width: 800px) {
+  .toolGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.toolCard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.48rem;
+  min-height: 11.75rem;
+  padding: 1.15rem 1.2rem 1.1rem;
+  border-radius: 0.65rem;
+  border: 1px solid rgba(22, 50, 63, 0.08);
+  background: rgba(255, 255, 255, 0.98);
+  cursor: pointer;
+  text-align: left;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.15s ease;
+  outline: none;
+}
+
+.toolCard:hover {
+  border-color: rgba(36, 122, 116, 0.28);
+  box-shadow: 0 5px 20px rgba(22, 50, 63, 0.07);
+  transform: translateY(-2px);
+}
+
+.toolCard:focus-visible {
+  box-shadow: 0 0 0 2px rgba(36, 122, 116, 0.35);
+}
+
+.toolCardAdminMark {
+  padding-top: 1.38rem;
+}
+
+.toolCardAdminMark .toolCardTitle {
+  padding-right: 2rem;
+}
+
+.toolCardDeprecated {
+  opacity: 0.72;
+  filter: grayscale(0.12);
+  background: rgba(248, 249, 250, 0.95);
+}
+
+.toolCardDeprecated:hover {
+  opacity: 0.82;
+}
+
+.cardMoreAction {
+  position: absolute;
+  top: 0.55rem;
+  right: 0.55rem;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  border: 1px solid rgba(22, 50, 63, 0.12);
+  border-radius: 0.4rem;
+  background: rgba(255, 255, 255, 0.95);
+  color: var(--muted);
+  font-size: 0.85rem;
+  line-height: 1;
+  cursor: pointer;
+  z-index: 1;
+  transition:
+    background 0.12s ease,
+    border-color 0.12s ease;
+}
+
+.cardMoreAction:hover {
+  background: rgba(36, 122, 116, 0.08);
+  border-color: rgba(36, 122, 116, 0.28);
+  color: var(--teal);
+}
+
+.toolCardTitle {
+  margin: 0;
+  padding-right: 0.25rem;
+  font-size: 1.08rem;
+  font-weight: 680;
+  color: var(--ink);
+  line-height: 1.32;
+}
+
+.toolCardMetaLine {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem 0.65rem;
+}
+
+.toolCardCategory {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--muted);
+  letter-spacing: 0.03em;
+}
+
+.toolCardSummary {
+  margin: 0;
+  font-size: 0.86rem;
+  line-height: 1.52;
+  color: rgba(22, 50, 63, 0.7);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  flex: 1;
+}
+
+.toolCardFooter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.85rem;
+  margin-top: auto;
+  padding-top: 0.85rem;
+  border-top: 1px solid rgba(22, 50, 63, 0.07);
+}
+
+.latestVersionPill {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #0a5c45;
+  padding: 0.22rem 0.55rem;
+  border-radius: 0.4rem;
+  background: rgba(36, 122, 116, 0.12);
+  border: 1px solid rgba(36, 122, 116, 0.28);
+  letter-spacing: 0.02em;
+}
+
+.toolCardUpdatedMeta {
+  font-size: 0.76rem;
+  color: var(--muted);
+  flex: 1 1 auto;
+  min-width: 7rem;
+}
+
+.cardChevron {
+  font-size: 0.76rem;
+  font-weight: 650;
+  color: rgba(36, 122, 116, 0.9);
+  margin-left: auto;
+}
+
+.detailHeroLatest {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem;
+  margin: 0.35rem 0 0.75rem;
+}
+
+.latestVersionBadge {
+  font-size: 0.85rem;
+  font-weight: 700;
+  padding: 0.3rem 0.65rem;
+  border-radius: 0.5rem;
+  color: #0d4a38;
+  background: linear-gradient(135deg, rgba(36, 122, 116, 0.18), rgba(36, 122, 116, 0.08));
+  border: 1px solid rgba(36, 122, 116, 0.35);
+}
+
+.detailTopBar {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.85rem;
+}
+
+.container {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+@media (min-width: 1200px) {
+  .container {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 320px;
+  }
+}
+
+.rightPanel {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+
+@media (min-width: 1200px) {
+  .rightPanel {
+    position: sticky;
+    top: 80px;
+    align-self: start;
+  }
+}
+
+.detailPageUser {
+  border-top: 2px solid rgba(36, 122, 116, 0.14);
+  padding-top: 0.35rem;
+}
+
+.detailPageAdmin {
+  border-top: 2px solid rgba(36, 122, 116, 0.22);
+  padding-top: 0.35rem;
+}
+
+.detailLayout {
+  display: grid;
+  gap: 1.35rem;
+}
+
+.detailMain {
+  display: grid;
+  gap: 1.15rem;
+  min-width: 0;
+}
+
+.detailAsideColumn {
+  min-width: 0;
+}
+
+@media (min-width: 960px) {
+  .detailLayout {
+    grid-template-columns: minmax(0, 1fr) minmax(17.5rem, 21rem);
+    align-items: start;
+    gap: 1.5rem;
+  }
+}
+
+.detailAsideSticky {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  position: sticky;
+  top: 0.85rem;
+}
+
+.detailMainCard {
+  padding: 1.35rem 1.4rem;
+  border-radius: 0.65rem;
+}
+
+.detailToolHeader {
+  margin-bottom: 1rem;
+}
+
+.detailToolName {
+  margin: 0;
+  font-size: 1.42rem;
+  font-weight: 720;
+  line-height: 1.25;
+  letter-spacing: 0.01em;
+  color: var(--ink);
+}
+
+.detailToolSlug {
+  margin: 0.35rem 0 0;
+  font-size: 0.84rem;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.detailLead {
+  margin: 0.85rem 0 0;
+  font-size: 0.95rem;
+  line-height: 1.58;
+  color: rgba(22, 50, 63, 0.82);
+}
+
+.tagRowTight {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.65rem;
+}
+
+.tagMore {
+  font-size: 0.72rem;
+  font-weight: 650;
+  color: var(--muted);
+  align-self: center;
+}
+
+.detailDescriptionBlock {
+  margin-top: 1.15rem;
+  padding-top: 1.05rem;
+  border-top: 1px solid rgba(22, 50, 63, 0.08);
+}
+
+.detailFacts {
+  display: grid;
+  gap: 0.55rem;
+  margin: 1.15rem 0 0;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(22, 50, 63, 0.08);
+}
+
+.detailFactRow {
+  display: grid;
+  grid-template-columns: 6rem minmax(0, 1fr);
+  gap: 0.4rem 0.75rem;
+  font-size: 0.84rem;
+}
+
+.detailFactRow dt {
+  margin: 0;
+  color: var(--muted);
+}
+
+.detailFactRow dd {
+  margin: 0;
+  color: var(--ink);
+  word-break: break-word;
+}
+
+.detailSectionTitle {
+  margin: 0 0 0.45rem;
+  font-size: 0.72rem;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.detailDescriptionBody {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.62;
+  color: rgba(22, 50, 63, 0.78);
+  white-space: pre-wrap;
+}
+
+.detailMetaMuted {
+  margin: 1rem 0 0;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.versionsPanel {
+  padding: 1.2rem 1.35rem;
+  border-radius: 0.65rem;
+}
+
+.versionsPanelHead {
+  margin-bottom: 1rem;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid rgba(22, 50, 63, 0.07);
+}
+
+.versionsPanelHint {
+  margin: 0.35rem 0 0;
+  font-size: 0.82rem;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.versionList {
+  display: grid;
+  gap: 1rem;
+}
+
+.versionShell {
+  padding: 1rem 1.12rem;
+  border-radius: 0.65rem;
+  border: 1px solid rgba(22, 50, 63, 0.09);
+  background: rgba(255, 255, 255, 0.96);
+}
+
+.versionShellLatest {
+  border-color: rgba(36, 122, 116, 0.32);
+  background: rgba(230, 244, 239, 0.45);
+  box-shadow: 0 1px 0 rgba(36, 122, 116, 0.06);
+}
+
+.versionShellLegacy {
+  opacity: 0.88;
+  background: rgba(248, 249, 250, 0.92);
+  border-style: dashed;
+  border-color: rgba(92, 100, 112, 0.15);
+}
+
+.versionLine1 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 0.75rem;
+  margin-bottom: 0.55rem;
+}
+
+.versionLine1Left {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.versionCode {
+  font-size: 1rem;
+  font-weight: 720;
+  color: var(--ink);
+}
+
+.versionBadgeLatest {
+  font-size: 0.68rem;
+  font-weight: 750;
+  padding: 0.15rem 0.45rem;
+  border-radius: 0.35rem;
+  background: rgba(36, 122, 116, 0.2);
+  color: #063d2e;
+}
+
+.versionBadgeHistory {
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 0.15rem 0.45rem;
+  border-radius: 0.35rem;
+  border: 1px solid rgba(92, 100, 112, 0.2);
+  color: var(--muted);
+}
+
+.versionTime {
+  font-size: 0.78rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.versionReleaseNotes {
+  margin: 0 0 0.5rem;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: rgba(22, 50, 63, 0.85);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.versionChangelogBlock {
+  margin-top: 0.35rem;
+}
+
+.versionSectionLabel {
+  display: block;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 0.25rem;
+}
+
+.versionAssetStrip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem 0.85rem;
+  margin-top: 0.55rem;
+  padding: 0.45rem 0.5rem;
+  border-radius: 0.45rem;
+  background: rgba(22, 50, 63, 0.035);
+  font-size: 0.74rem;
+  color: var(--muted);
+}
+
+.versionRowFooter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.65rem 1rem;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(22, 50, 63, 0.08);
+}
+
+.versionRowFooterActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+.versionDownloadRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.65rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid rgba(22, 50, 63, 0.06);
+}
+
+.downloadButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.38rem 0.85rem;
+  font-size: 0.82rem;
+  font-weight: 650;
+  border-radius: 0.45rem;
+  border: 1px solid rgba(36, 122, 116, 0.38);
+  background: rgba(36, 122, 116, 0.1);
+  color: #0a5340;
+  text-decoration: none;
+  transition:
+    background 0.12s ease,
+    border-color 0.12s ease;
+}
+
+.downloadButton:hover {
+  background: rgba(36, 122, 116, 0.16);
+}
+
+.changelogPreCompact {
+  margin: 0.25rem 0 0;
+  padding: 0.5rem 0.6rem;
+  border-radius: 0.45rem;
+  background: rgba(22, 50, 63, 0.035);
+  font-size: 0.8rem;
+  line-height: 1.48;
+  white-space: pre-wrap;
+  overflow-x: auto;
+}
+
+.overviewPanel,
+.adminMaintainPanel {
+  padding: 1.05rem 1.1rem;
+  border-radius: 0.65rem;
+}
+
+.overviewPanel {
+  border: 1px solid rgba(22, 50, 63, 0.08);
+}
+
+.adminMaintainPanel {
+  border: 1px solid rgba(36, 122, 116, 0.22);
+  background: rgba(36, 122, 116, 0.04);
+}
+
+.asideCardTitle {
+  margin: 0 0 0.75rem;
+  font-size: 0.72rem;
+  font-weight: 750;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.overviewDl {
+  margin: 0;
+}
+
+.overviewDlRow {
+  display: grid;
+  grid-template-columns: 5.2rem minmax(0, 1fr);
+  gap: 0.35rem 0.5rem;
+  padding: 0.32rem 0;
+  border-bottom: 1px solid rgba(22, 50, 63, 0.06);
+  font-size: 0.83rem;
+}
+
+.overviewDlRow:last-child {
+  border-bottom: none;
+}
+
+.overviewDlRow dt {
+  margin: 0;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.overviewDlRow dd {
+  margin: 0;
+  font-weight: 600;
+  color: var(--ink);
+  word-break: break-word;
+}
+
+.adminActionGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.adminActionGroup :global(.button),
+.adminActionGroup :global(.buttonGhost) {
+  width: 100%;
+  justify-content: center;
+  font-size: 0.84rem;
+  padding: 0.42rem 0.75rem;
+}
+
+.adminFeedback {
+  margin: 0 0 0.75rem;
+  padding: 0.5rem 0.6rem;
+  border-radius: 0.45rem;
+  font-size: 0.82rem;
+  background: rgba(212, 160, 23, 0.12);
+  color: #5c4a00;
+}
+
+.asideForm {
+  margin-top: 0.85rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid rgba(22, 50, 63, 0.08);
+  max-width: none;
+}
+
+.asideFormTitle {
+  margin: 0 0 0.65rem;
+  font-size: 0.88rem;
+  font-weight: 650;
+  color: var(--ink);
+}
+
+.changelogFold {
+  margin-top: 0.65rem;
+}
+
+.changelogPre {
+  margin: 0.35rem 0 0;
+  padding: 0.55rem 0.65rem;
+  border-radius: 0.55rem;
+  background: rgba(22, 50, 63, 0.04);
+  font-size: 0.84rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-x: auto;
+}
+
+.changelogPreview {
+  margin: 0.35rem 0 0;
+  font-size: 0.84rem;
+  color: var(--muted);
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.changelogToggle {
+  margin-top: 0.45rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--teal);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 0.12em;
+}
+
+.adminZone {
+  padding: 1rem;
+  border-radius: 1rem;
+  border: 1px dashed rgba(36, 122, 116, 0.35);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.adminZoneTitle {
+  margin: 0 0 0.65rem;
+  font-size: 0.9rem;
+  font-weight: 650;
+  color: var(--teal);
+}
+
+.uploadForm {
+  display: grid;
+  gap: 1rem;
+  max-width: 720px;
+}
+
+.uploadGrid2 {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.uploadToast {
+  margin-bottom: 0.85rem;
+  padding: 0.55rem 0.75rem;
+  border-radius: 0.5rem;
+  font-size: 0.86rem;
+  background: rgba(36, 122, 116, 0.12);
+  color: #0a5340;
+  border: 1px solid rgba(36, 122, 116, 0.25);
+}
+
+.uploadFormError {
+  padding: 0.55rem 0.75rem;
+  border-radius: 0.5rem;
+  font-size: 0.86rem;
+  background: rgba(180, 60, 60, 0.08);
+  color: #7a2626;
+  border: 1px solid rgba(180, 60, 60, 0.22);
+}
+
+.detailActivityPanel {
+  padding: 1.05rem 1.1rem;
+  border-radius: 0.65rem;
+  border: 1px solid rgba(22, 50, 63, 0.08);
+  background: rgba(22, 50, 63, 0.02);
+}
+
+.detailActivityBlock {
+  margin-top: 1rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid rgba(22, 50, 63, 0.07);
+}
+
+.detailActivityBlock:first-child {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+
+.detailActivityTitle {
+  margin: 0 0 0.45rem;
+  font-size: 0.7rem;
+  font-weight: 750;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.detailActivityList {
+  margin: 0;
+  padding-left: 1.05rem;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: rgba(22, 50, 63, 0.75);
+}
+
+.detailActivityRow {
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: rgba(22, 50, 63, 0.78);
+  margin: 0.25rem 0 0;
+}
+
+.detailActivityHint {
+  margin: 0.35rem 0 0;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+@media (min-width: 640px) {
+  .uploadGrid2 {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* 详情页：新增版本弹窗 */
+.modalBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+  background: rgba(22, 50, 63, 0.4);
+}
+
+.modalPanel {
+  width: 100%;
+  max-width: 26.5rem;
+  max-height: min(90vh, 42rem);
+  overflow: auto;
+  padding: 1.1rem 1.2rem 1.2rem;
+  border-radius: 0.7rem;
+  border: 1px solid rgba(22, 50, 63, 0.1);
+  box-shadow: 0 20px 48px rgba(22, 50, 63, 0.2);
+}
+
+.modalHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.65rem;
+  border-bottom: 1px solid rgba(22, 50, 63, 0.08);
+}
+
+.modalTitle {
+  margin: 0;
+  font-size: 1.02rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.modalClose {
+  flex-shrink: 0;
+  margin: -0.2rem -0.2rem 0 0;
+  padding: 0.25rem 0.55rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  border: none;
+  border-radius: 0.4rem;
+  background: rgba(22, 50, 63, 0.06);
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.modalClose:hover {
+  background: rgba(22, 50, 63, 0.1);
+  color: var(--ink);
+}
+
+.modalForm {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.modalActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.35rem;
+}
+
+.adminHintBlock {
+  margin: 0 0 0.9rem;
+  font-size: 0.77rem;
+  line-height: 1.55;
+  color: rgba(22, 50, 63, 0.68);
+}
+
+.adminHintBlock strong {
+  font-weight: 700;
+  color: rgba(22, 50, 63, 0.82);
+}
+
+.versionAdminRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.35rem 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.versionAdminBtn {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.2rem 0.48rem;
+  border-radius: 0.35rem;
+  border: 1px solid rgba(22, 50, 63, 0.12);
+  background: rgba(255, 255, 255, 0.9);
+  color: rgba(22, 50, 63, 0.55);
+  cursor: pointer;
+  transition:
+    background 0.1s ease,
+    border-color 0.1s ease;
+}
+
+.versionAdminBtn:hover {
+  border-color: rgba(36, 122, 116, 0.35);
+  color: rgba(22, 50, 63, 0.78);
+  background: rgba(36, 122, 116, 0.06);
+}
+
+.versionAdminBtnDanger {
+  border-color: rgba(160, 72, 72, 0.22);
+  color: rgba(120, 48, 48, 0.82);
+}
+
+.versionAdminBtnDanger:hover {
+  background: rgba(180, 60, 60, 0.08);
+  border-color: rgba(160, 72, 72, 0.35);
+}
+
+.versionAdminHint {
+  font-size: 0.72rem;
+  line-height: 1.4;
+  color: var(--muted);
+  text-align: right;
+  max-width: 18rem;
+}

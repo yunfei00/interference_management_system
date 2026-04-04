@@ -4,7 +4,8 @@ import type { Route } from "next";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useTransition } from "react";
 
-import type { ApiEnvelope, SessionPayload } from "@/lib/contracts";
+import type { ApiEnvelope, AuthUser, SessionPayload } from "@/lib/contracts";
+import { apiFetch, logAuthClientConfig } from "@/lib/api-client";
 import { APP_NAME } from "@/lib/public-config";
 
 import styles from "./login-form.module.css";
@@ -12,12 +13,12 @@ import styles from "./login-form.module.css";
 type LoginFormProps = {
   /** 嵌入门户时使用更紧凑的文案与布局 */
   embedded?: boolean;
+  onSwitchToRegister?: () => void;
 };
 
-export function LoginForm({ embedded = false }: LoginFormProps) {
+export function LoginForm({ embedded = false, onSwitchToRegister }: LoginFormProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const nextPath = resolveNextPath(searchParams.get("next"));
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -35,7 +36,8 @@ export function LoginForm({ embedded = false }: LoginFormProps) {
     }
 
     try {
-      const response = await fetch("/api/auth/login", {
+      logAuthClientConfig("login submit");
+      const response = await apiFetch("/api/auth/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -50,10 +52,15 @@ export function LoginForm({ embedded = false }: LoginFormProps) {
       }
 
       startTransition(() => {
-        router.push(nextPath);
+        const target = resolvePostLoginPath(
+          searchParams.get("next"),
+          payload.data?.user,
+        );
+        router.push(target);
         router.refresh();
       });
-    } catch {
+    } catch (error) {
+      console.warn("[auth][login] 浏览器请求异常:", error);
       setError("当前认证网关暂时无法连接后端，请稍后重试。");
     }
   }
@@ -115,7 +122,20 @@ export function LoginForm({ embedded = false }: LoginFormProps) {
         </button>
       </form>
 
-      {embedded ? null : (
+      {embedded && onSwitchToRegister ? (
+        <div className={styles.embeddedSwitch}>
+          <span className={styles.embeddedSwitchText}>还没有企业账号？</span>
+          <button
+            className={styles.inlineLink}
+            onClick={onSwitchToRegister}
+            type="button"
+          >
+            注册账号
+          </button>
+        </div>
+      ) : null}
+
+      {embedded === false ? (
         <>
           <div className={styles.ruleList}>
             <div className={styles.ruleItem}>审批通过后才会开通业务工作台访问权限</div>
@@ -128,17 +148,35 @@ export function LoginForm({ embedded = false }: LoginFormProps) {
             <p>当前登录页用于企业统一身份认证，不再展示技术迁移说明。</p>
           </div>
         </>
-      )}
+      ) : null}
     </section>
   );
 }
 
-function resolveNextPath(nextPath: string | null): Route {
-  if (!nextPath || !nextPath.startsWith("/") || nextPath.startsWith("//")) {
+function resolvePostLoginPath(
+  nextPath: string | null,
+  user: AuthUser | undefined,
+): Route {
+  const raw = nextPath?.trim() ?? "";
+  if (
+    raw.startsWith("/") &&
+    !raw.startsWith("//") &&
+    raw !== "/dashboard" &&
+    raw !== ""
+  ) {
+    return raw as Route;
+  }
+
+  const home = user?.department_page_path?.trim();
+  if (home?.startsWith("/")) {
+    return home as Route;
+  }
+
+  if (user?.is_staff || user?.is_superuser) {
     return "/dashboard";
   }
 
-  return nextPath as Route;
+  return "/dashboard";
 }
 
 function resolveLoginError(code: string, fallbackMessage: string) {
@@ -164,6 +202,10 @@ function resolveLoginError(code: string, fallbackMessage: string) {
 
   if (code === "not_approved") {
     return "当前账号尚未通过审批，暂时无法登录。";
+  }
+
+  if (code === "account_disabled") {
+    return "该账号已被禁用，请联系管理员。";
   }
 
   return fallbackMessage || "登录失败，请稍后重试。";

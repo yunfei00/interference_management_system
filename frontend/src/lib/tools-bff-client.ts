@@ -4,135 +4,92 @@ import type {
   ToolDetailPayload,
   ToolListItem,
 } from "@/lib/contracts";
-import { defaultFetchMessages } from "@/lib/fetch-messages";
+import { apiFetch } from "@/lib/api-client";
 import type { PaginatedResourceState, ResourceState } from "@/lib/browser-bff";
-import {
-  buildMockToolDetail,
-  buildMockToolsPaginated,
-} from "@/lib/tools-mock-payload";
+import { defaultFetchMessages } from "@/lib/fetch-messages";
 
-const LOG_PREFIX = "[tools]";
+const LIST_ERR = "无法加载工具列表，请稍后重试或联系管理员。";
+const DETAIL_ERR = "无法加载工具详情，请刷新后重试或联系管理员。";
 
-function forceMock(): boolean {
-  return process.env.NEXT_PUBLIC_TOOLS_FORCE_MOCK === "1";
-}
+type EnvelopeResult<T> = {
+  success: boolean;
+  message: string | null;
+  data: T | null;
+};
 
-export async function fetchToolsListWithFallback(
-  page: number,
-  pageSizeHint: number = 10,
-): Promise<PaginatedResourceState<ToolListItem>> {
-  if (forceMock()) {
-    console.info(`${LOG_PREFIX} using mock data (NEXT_PUBLIC_TOOLS_FORCE_MOCK=1)`);
+function unwrapEnvelope<T>(json: unknown, response: Response): EnvelopeResult<T> {
+  if (json && typeof json === "object" && "success" in json) {
+    const payload = json as Partial<ApiEnvelope<T>>;
     return {
-      kind: "ready",
-      data: buildMockToolsPaginated(page, pageSizeHint),
+      success: payload.success ?? response.ok,
+      message: typeof payload.message === "string" ? payload.message : null,
+      data: (payload.data ?? null) as T | null,
     };
   }
 
-  const path =
-    pageSizeHint && pageSizeHint !== 10
-      ? `/api/tools?page=${page}&page_size=${pageSizeHint}`
-      : `/api/tools?page=${page}`;
+  return {
+    success: response.ok,
+    message: null,
+    data: (json as T) ?? null,
+  };
+}
+
+export async function fetchToolsList(
+  page: number,
+  pageSize: number = 10,
+): Promise<PaginatedResourceState<ToolListItem>> {
+  const params = new URLSearchParams({
+    page: String(Math.max(1, page)),
+    page_size: String(Math.max(1, pageSize)),
+  });
 
   try {
-    const response = await fetch(path, { cache: "no-store" });
-    const payload = (await response.json()) as ApiEnvelope<
-      PaginatedPayload<ToolListItem> | null
-    >;
+    const response = await apiFetch(`/api/tools?${params}`, { cache: "no-store" });
+    const json = (await response.json()) as unknown;
+    const payload = unwrapEnvelope<PaginatedPayload<ToolListItem>>(json, response);
 
     if (response.status === 401) {
-      console.warn(`${LOG_PREFIX} fallback to mock data (status 401)`);
-      return { kind: "ready", data: buildMockToolsPaginated(page, pageSizeHint) };
+      return { kind: "error", message: defaultFetchMessages.expired };
     }
-
     if (response.status === 403) {
-      console.warn(`${LOG_PREFIX} fallback to mock data (status 403)`);
-      return { kind: "ready", data: buildMockToolsPaginated(page, pageSizeHint) };
+      return { kind: "error", message: defaultFetchMessages.forbidden };
+    }
+    if (!payload.success || !payload.data || !Array.isArray(payload.data.items)) {
+      return {
+        kind: "error",
+        message: payload.message?.trim() || LIST_ERR,
+      };
     }
 
-    if (
-      response.ok &&
-      payload.success &&
-      payload.data &&
-      Array.isArray(payload.data.items)
-    ) {
-      console.info(`${LOG_PREFIX} using backend api`);
-      return { kind: "ready", data: payload.data };
-    }
-
-    const inferredSize = payload.data?.pagination?.page_size ?? pageSizeHint;
-
-    console.warn(`${LOG_PREFIX} fallback to mock data`, {
-      status: response.status,
-      message: payload?.message,
-    });
-    return {
-      kind: "ready",
-      data: buildMockToolsPaginated(page, inferredSize),
-    };
-  } catch (error) {
-    console.warn(`${LOG_PREFIX} fallback to mock data (network/parse)`, error);
-    return {
-      kind: "ready",
-      data: buildMockToolsPaginated(page, pageSizeHint),
-    };
+    return { kind: "ready", data: payload.data };
+  } catch {
+    return { kind: "error", message: defaultFetchMessages.network };
   }
 }
 
-export async function fetchToolDetailWithFallback(
+export async function fetchToolDetail(
   toolId: string,
 ): Promise<ResourceState<ToolDetailPayload>> {
-  if (forceMock()) {
-    const data = buildMockToolDetail(toolId);
-    if (!data) {
-      return { kind: "error", message: "未找到该工具。" };
-    }
-    console.info(
-      `${LOG_PREFIX} detail using mock data (NEXT_PUBLIC_TOOLS_FORCE_MOCK=1)`,
-    );
-    return { kind: "ready", data };
-  }
-
   try {
-    const response = await fetch(`/api/tools/${toolId}`, { cache: "no-store" });
-    const payload = (await response.json()) as ApiEnvelope<ToolDetailPayload | null>;
+    const response = await apiFetch(`/api/tools/${toolId}`, { cache: "no-store" });
+    const json = (await response.json()) as unknown;
+    const payload = unwrapEnvelope<ToolDetailPayload>(json, response);
 
-    if (response.status === 401 || response.status === 403) {
-      console.warn(
-        `${LOG_PREFIX} detail fallback to mock data (status ${response.status})`,
-      );
-      const data = buildMockToolDetail(toolId);
-      return data
-        ? { kind: "ready", data }
-        : { kind: "error", message: defaultFetchMessages.forbidden };
+    if (response.status === 401) {
+      return { kind: "error", message: defaultFetchMessages.expired };
+    }
+    if (response.status === 403) {
+      return { kind: "error", message: defaultFetchMessages.forbidden };
+    }
+    if (!payload.success || !payload.data || !Array.isArray(payload.data.versions)) {
+      return {
+        kind: "error",
+        message: payload.message?.trim() || DETAIL_ERR,
+      };
     }
 
-    if (
-      response.ok &&
-      payload.success &&
-      payload.data &&
-      Array.isArray(payload.data.versions)
-    ) {
-      console.info(`${LOG_PREFIX} detail using backend api`);
-      return { kind: "ready", data: payload.data };
-    }
-
-    console.warn(`${LOG_PREFIX} detail fallback to mock data`, {
-      status: response.status,
-      message: payload.message,
-    });
-    const mock = buildMockToolDetail(toolId);
-    return mock
-      ? { kind: "ready", data: mock }
-      : {
-          kind: "error",
-          message: payload.message || "未找到该工具。",
-        };
-  } catch (error) {
-    console.warn(`${LOG_PREFIX} detail fallback to mock data (network)`, error);
-    const mock = buildMockToolDetail(toolId);
-    return mock
-      ? { kind: "ready", data: mock }
-      : { kind: "error", message: defaultFetchMessages.network };
+    return { kind: "ready", data: payload.data };
+  } catch {
+    return { kind: "error", message: defaultFetchMessages.network };
   }
 }

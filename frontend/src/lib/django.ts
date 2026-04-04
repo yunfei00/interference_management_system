@@ -416,15 +416,11 @@ export async function fetchProtectedBackendData<T>(
       withAuthorizationHeader(init, tokens.accessToken),
     );
 
-    if (
-      directResult.response.ok &&
-      directResult.payload?.success &&
-      directResult.payload.data !== undefined
-    ) {
+    if (directResult.response.ok && directResult.payload?.success) {
       return {
         ok: true,
         status: directResult.response.status,
-        data: directResult.payload.data,
+        data: directResult.payload.data as T,
       };
     }
 
@@ -440,7 +436,7 @@ export async function fetchProtectedBackendData<T>(
           extractErrorMessage(directResult.payload) ??
           describeUnexpectedBackendResponse(
             directResult.response,
-            "Unable to load backend data.",
+            "无法获取后端数据，请稍后重试或联系管理员。",
           ),
         clearCookies: isAuthFailure(directResult.response, directResult.payload),
       };
@@ -473,15 +469,11 @@ export async function fetchProtectedBackendData<T>(
     withAuthorizationHeader(init, refreshResult.access),
   );
 
-  if (
-    retriedResult.response.ok &&
-    retriedResult.payload?.success &&
-    retriedResult.payload.data !== undefined
-  ) {
+  if (retriedResult.response.ok && retriedResult.payload?.success) {
     return {
       ok: true,
       status: retriedResult.response.status,
-      data: retriedResult.payload.data,
+      data: retriedResult.payload.data as T,
       refreshedAccess: refreshResult.access,
       refreshedRefresh: refreshResult.refresh,
     };
@@ -495,7 +487,7 @@ export async function fetchProtectedBackendData<T>(
       extractErrorMessage(retriedResult.payload) ??
       describeUnexpectedBackendResponse(
         retriedResult.response,
-        "Unable to load backend data.",
+        "无法获取后端数据，请稍后重试或联系管理员。",
       ),
     clearCookies: isAuthFailure(retriedResult.response, retriedResult.payload),
   };
@@ -542,7 +534,7 @@ export async function fetchProtectedBackendResponse(
           extractErrorMessage(payload) ??
           describeUnexpectedBackendResponse(
             directResponse,
-            "Unable to load backend response.",
+            "无法获取后端响应，请稍后重试或联系管理员。",
           ),
         clearCookies: isAuthFailure(directResponse, payload),
       };
@@ -593,7 +585,7 @@ export async function fetchProtectedBackendResponse(
       extractErrorMessage(payload) ??
       describeUnexpectedBackendResponse(
         retriedResponse,
-        "Unable to load backend response.",
+        "无法获取后端响应，请稍后重试或联系管理员。",
       ),
     clearCookies: isAuthFailure(retriedResponse, payload),
   };
@@ -645,9 +637,9 @@ async function fetchSessionAttempt(accessToken: string): Promise<SessionAttempt>
       extractErrorMessage(menuResult.payload) ??
       describeUnexpectedBackendResponse(
         meResult.response.ok ? menuResult.response : meResult.response,
-        "Unable to load the current session.",
+        "无法加载当前会话，请重新登录。",
       ) ??
-      "Unable to load the current session.";
+      "无法加载当前会话，请重新登录。";
 
     return {
       ok: false,

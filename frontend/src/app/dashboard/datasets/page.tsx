@@ -1,5 +1,8 @@
-import { DatasetsPage } from "@/components/datasets-page";
+import type { Route } from "next";
+import { permanentRedirect } from "next/navigation";
 
-export default function DashboardDatasetsPage() {
-  return <DatasetsPage />;
+export default function LegacyDatasetsRedirectPage() {
+  permanentRedirect(
+    "/dashboard/electromagnetic/interference/datasets" as Route,
+  );
 }

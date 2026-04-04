@@ -1,5 +1,8 @@
-import { CommandsPage } from "@/components/commands-page";
+import type { Route } from "next";
+import { permanentRedirect } from "next/navigation";
 
-export default function DashboardCommandsPage() {
-  return <CommandsPage />;
+export default function LegacyCommandsRedirectPage() {
+  permanentRedirect(
+    "/dashboard/electromagnetic/interference/commands" as Route,
+  );
 }

@@ -10,9 +10,16 @@ import {
 import {
   ACCESS_COOKIE_NAME,
   REFRESH_COOKIE_NAME,
+  getDjangoBaseUrl,
 } from "@/lib/server-config";
 
-export async function GET() {
+export async function GET(request: Request) {
+  if (process.env.NODE_ENV === "development") {
+    const host =
+      request.headers.get("x-forwarded-host") ?? request.headers.get("host");
+    console.info("[auth][session] GET /api/session Host:", host, "| Django:", getDjangoBaseUrl());
+  }
+
   const cookieStore = await cookies();
   const accessToken = cookieStore.get(ACCESS_COOKIE_NAME)?.value;
   const refreshToken = cookieStore.get(REFRESH_COOKIE_NAME)?.value;

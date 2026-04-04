@@ -8,14 +8,15 @@ import { useDashboardSession } from "./dashboard-session-provider";
 import styles from "./department-pages.module.css";
 
 type DepartmentAccessGuardProps = {
-  permission: string;
+  /** 须全部具备 */
+  requiredPermissions: string[];
   title: string;
   description: string;
   children: React.ReactNode;
 };
 
 export function DepartmentAccessGuard({
-  permission,
+  requiredPermissions,
   title,
   description,
   children,
@@ -24,33 +25,33 @@ export function DepartmentAccessGuard({
 
   if (state.kind === "loading") {
     return (
-      <main className={styles.page}>
+      <div className={styles.page}>
         <section className={`surface ${styles.panel}`}>
           <div className={styles.empty}>正在加载页面权限...</div>
         </section>
-      </main>
+      </div>
     );
   }
 
   if (state.kind === "error") {
     return (
-      <main className={styles.page}>
+      <div className={styles.page}>
         <section className={`surface ${styles.panel}`}>
           <h1 className={styles.panelTitle}>无法加载当前页面</h1>
           <div className={styles.empty}>{state.message}</div>
         </section>
-      </main>
+      </div>
     );
   }
 
-  if (!hasDashboardPermission(state.data.permissions, permission)) {
+  if (!hasDashboardPermission(state.data.permissions, requiredPermissions)) {
     return (
-      <main className={styles.page}>
+      <div className={styles.page}>
         <section className={`surface ${styles.panel}`}>
           <h1 className={styles.panelTitle}>{title}</h1>
           <p className={styles.panelText}>{description}</p>
           <div className={styles.empty}>
-            当前账号没有访问该部门页面的权限，请联系管理员调整所属部门或权限配置。
+            当前账号没有访问该页面的权限，请联系管理员调整所属部门或权限配置。
           </div>
           <div className={styles.actions}>
             <Link className="buttonGhost" href="/dashboard">
@@ -58,7 +59,7 @@ export function DepartmentAccessGuard({
             </Link>
           </div>
         </section>
-      </main>
+      </div>
     );
   }
 

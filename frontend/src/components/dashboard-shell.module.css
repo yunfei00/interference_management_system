@@ -1,3 +1,103 @@
+/* —— 企业门户壳：顶栏 + 侧栏 + 主内容 —— */
+.appShell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--canvas);
+}
+
+.appHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1.25rem;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--line);
+  background: rgba(255, 252, 246, 0.92);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+.appBrand {
+  font-size: 1.15rem;
+  font-weight: 750;
+  letter-spacing: -0.03em;
+  color: var(--ink-strong);
+  text-decoration: none;
+  margin-right: auto;
+}
+
+.appBrand:hover {
+  color: var(--teal);
+}
+
+.appHeaderMeta {
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.metaSep {
+  margin: 0 0.35rem;
+  opacity: 0.45;
+}
+
+.appHeaderActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+
+.appBody {
+  display: flex;
+  flex: 1;
+  align-items: stretch;
+  min-width: 0;
+  max-width: 1600px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.appSidebar {
+  width: 15.5rem;
+  flex-shrink: 0;
+  padding: 1rem 0.85rem 2rem 1.25rem;
+  border-right: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.45);
+  position: sticky;
+  top: 3.75rem;
+  align-self: flex-start;
+  max-height: calc(100vh - 3.75rem);
+  overflow: auto;
+}
+
+.appMain {
+  flex: 1;
+  min-width: 0;
+  padding: 1.25rem clamp(1rem, 2vw, 2rem) 3rem;
+}
+
+@media (max-width: 900px) {
+  .appBody {
+    flex-direction: column;
+  }
+
+  .appSidebar {
+    width: 100%;
+    position: relative;
+    top: 0;
+    max-height: none;
+    border-right: none;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .appHeaderActions {
+    width: 100%;
+    margin-left: 0;
+  }
+}
+
 .page {
   display: grid;
   gap: 1.4rem;

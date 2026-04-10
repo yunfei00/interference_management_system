@@ -1,4 +1,5 @@
 import { proxyProtectedJson } from "@/lib/server-bff";
+import { normalizeForwardedContentType } from "@/lib/content-type";
 
 export async function GET(request: Request) {
   const search = new URL(request.url).search;
@@ -6,7 +7,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const contentType = request.headers.get("content-type");
+  const contentType = normalizeForwardedContentType(request.headers.get("content-type"));
   const body = await request.arrayBuffer();
   return proxyProtectedJson("/api/v1/tools/", {
     method: "POST",

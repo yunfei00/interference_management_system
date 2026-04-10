@@ -12,6 +12,7 @@ import type {
   SessionPayload,
   TokenPayload,
 } from "@/lib/contracts";
+import { normalizeForwardedContentType } from "@/lib/content-type";
 import {
   ACCESS_COOKIE_NAME,
   REFRESH_COOKIE_NAME,
@@ -712,8 +713,9 @@ async function djangoFetch(path: string, init?: RequestInit) {
   const url = new URL(path, `${getDjangoBaseUrl()}/`);
   const headers = new Headers(init?.headers);
   const currentContentType = headers.get("Content-Type") ?? headers.get("content-type");
-  if (currentContentType?.toLowerCase().includes("applacation/json")) {
-    headers.set("Content-Type", currentContentType.replace(/applacation\/json/gi, "application/json"));
+  const normalizedContentType = normalizeForwardedContentType(currentContentType);
+  if (normalizedContentType && normalizedContentType !== currentContentType) {
+    headers.set("Content-Type", normalizedContentType);
   }
   headers.set("Accept", "application/json");
   if (typeof init?.body === "string" && !headers.has("Content-Type")) {

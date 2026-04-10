@@ -3,8 +3,8 @@ from __future__ import annotations
 from django.db import transaction
 from rest_framework import serializers
 
-from .models import Tool, ToolVersion
-from .services import sync_tool_latest
+from .models import Tool, ToolUploadSession, ToolVersion
+from .services import bind_upload_to_tool_version, build_upload_progress, sync_tool_latest
 
 
 def normalize_tags(raw_value) -> str:
@@ -163,6 +163,7 @@ class ToolCreateSerializer(serializers.Serializer):
     changelog = serializers.CharField(required=False, allow_blank=True, default="")
     file = serializers.FileField(required=False, allow_null=True)
     file_name = serializers.CharField(required=False, allow_blank=True, default="")
+    upload_id = serializers.CharField(required=False, allow_blank=True, default="")
 
     def validate_code(self, value: str) -> str:
         if Tool.objects.filter(code=value).exists():
@@ -190,6 +191,7 @@ class ToolCreateSerializer(serializers.Serializer):
         user = self.context["request"].user
         file_obj = validated_data.pop("file", None)
         file_name_hint = validated_data.pop("file_name", "") or ""
+        upload_id = (validated_data.pop("upload_id", "") or "").strip()
         initial_version = validated_data.pop("initial_version")
         release_notes = validated_data.pop("release_notes", "")
         changelog = validated_data.pop("changelog", "")
@@ -206,7 +208,7 @@ class ToolCreateSerializer(serializers.Serializer):
                 except (OSError, AttributeError):
                     file_size = 0
 
-            ToolVersion.objects.create(
+            version = ToolVersion.objects.create(
                 tool=tool,
                 version=initial_version,
                 release_notes=release_notes or f"{initial_version} initial release",
@@ -216,16 +218,34 @@ class ToolCreateSerializer(serializers.Serializer):
                 file_size=file_size,
                 created_by=user,
             )
+            if upload_id:
+                upload = ToolUploadSession.objects.filter(
+                    upload_id=upload_id,
+                    user=user,
+                    consumed_at__isnull=True,
+                ).first()
+                if upload is None:
+                    raise serializers.ValidationError({"upload_id": "Upload session is invalid."})
+                bind_upload_to_tool_version(upload=upload, version=version)
             sync_tool_latest(tool.id)
         return tool
 
 
 class ToolVersionCreateSerializer(serializers.ModelSerializer):
     file = serializers.FileField(required=False, allow_null=True)
+    upload_id = serializers.CharField(required=False, allow_blank=True, default="")
 
     class Meta:
         model = ToolVersion
-        fields = ["version", "release_notes", "changelog", "file", "file_name", "checksum"]
+        fields = [
+            "version",
+            "release_notes",
+            "changelog",
+            "file",
+            "file_name",
+            "checksum",
+            "upload_id",
+        ]
 
     def validate_version(self, value: str) -> str:
         tool: Tool = self.context["tool"]
@@ -237,6 +257,7 @@ class ToolVersionCreateSerializer(serializers.ModelSerializer):
         user = self.context["request"].user
         tool: Tool = self.context["tool"]
         file_obj = validated_data.get("file")
+        upload_id = (validated_data.pop("upload_id", "") or "").strip()
         file_name = validated_data.pop("file_name", "") or ""
         file_size = 0
 
@@ -254,5 +275,62 @@ class ToolVersionCreateSerializer(serializers.ModelSerializer):
             file_name=file_name,
             **validated_data,
         )
+        if upload_id:
+            upload = ToolUploadSession.objects.filter(
+                upload_id=upload_id,
+                user=user,
+                consumed_at__isnull=True,
+            ).first()
+            if upload is None:
+                raise serializers.ValidationError({"upload_id": "Upload session is invalid."})
+            bind_upload_to_tool_version(upload=upload, version=row)
         sync_tool_latest(tool.id)
         return row
+
+
+class ToolUploadInitSerializer(serializers.Serializer):
+    filename = serializers.CharField(max_length=255)
+    file_size = serializers.IntegerField(min_value=1)
+    chunk_size = serializers.IntegerField(min_value=256 * 1024, max_value=20 * 1024 * 1024)
+    total_chunks = serializers.IntegerField(min_value=1)
+    checksum = serializers.CharField(required=False, allow_blank=True, max_length=128, default="")
+    target = serializers.ChoiceField(choices=ToolUploadSession.TARGET_CHOICES)
+    tool_id = serializers.IntegerField(required=False)
+
+    def validate(self, attrs: dict) -> dict:
+        if (
+            attrs.get("target") == ToolUploadSession.TARGET_TOOL_VERSION
+            and not attrs.get("tool_id")
+        ):
+            raise serializers.ValidationError({"tool_id": "tool_id is required for tool_version."})
+        return attrs
+
+
+class ToolUploadSessionSerializer(serializers.ModelSerializer):
+    uploaded_chunks = serializers.SerializerMethodField()
+    progress = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ToolUploadSession
+        fields = [
+            "upload_id",
+            "status",
+            "filename",
+            "file_size",
+            "chunk_size",
+            "total_chunks",
+            "uploaded_chunks_count",
+            "uploaded_chunks",
+            "progress",
+            "error_message",
+            "merged_file_path",
+            "created_at",
+            "updated_at",
+            "completed_at",
+        ]
+
+    def get_uploaded_chunks(self, obj: ToolUploadSession):
+        return build_upload_progress(obj)["uploaded_chunks"]
+
+    def get_progress(self, obj: ToolUploadSession):
+        return build_upload_progress(obj)["progress"]

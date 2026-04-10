@@ -1216,3 +1216,27 @@
   text-align: right;
   max-width: 18rem;
 }
+
+.uploadHint {
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(22, 50, 63, 0.1);
+  background: rgba(22, 50, 63, 0.03);
+  display: grid;
+  gap: 0.3rem;
+  font-size: 0.82rem;
+}
+
+.progressBar {
+  width: 100%;
+  height: 0.45rem;
+  border-radius: 999px;
+  background: rgba(22, 50, 63, 0.12);
+  overflow: hidden;
+}
+
+.progressBar span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #1f9d8f, #37b46a);
+}

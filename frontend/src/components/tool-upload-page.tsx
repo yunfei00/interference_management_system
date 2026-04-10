@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 
 import type { ApiEnvelope, ToolDetailPayload } from "@/lib/contracts";
 import { apiFetch } from "@/lib/api-client";
+import { runChunkedUpload, type UploadState } from "@/lib/tool-upload";
 import { TOOLS_MANAGE_ACCESS } from "@/lib/tool-permissions";
 
 import { DepartmentAccessGuard } from "./department-access-guard";
@@ -95,6 +96,14 @@ export function ToolUploadPage() {
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [uploadState, setUploadState] = useState<UploadState>({
+    status: "waiting",
+    uploadId: null,
+    uploadedChunks: 0,
+    totalChunks: 0,
+    progress: 0,
+    error: null,
+  });
 
   useEffect(() => {
     if (!toast) {
@@ -129,20 +138,23 @@ export function ToolUploadPage() {
     setLoading(true);
 
     try {
-      const formData = new FormData();
-      Object.entries(values).forEach(([key, value]) => {
-        if (value !== undefined && value !== null && String(value).trim() !== "") {
-          formData.append(key, String(value));
-        }
-      });
+      let uploadId = "";
       if (file) {
-        formData.append("file", file);
-        formData.append("file_name", file.name);
+        const uploadResult = await runChunkedUpload({
+          file,
+          target: "tool_create",
+          onState: setUploadState,
+        });
+        uploadId = uploadResult.uploadId;
       }
-
       const response = await apiFetch("/api/tools", {
         method: "POST",
-        body: formData,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...values,
+          upload_id: uploadId,
+          file_name: file?.name ?? "",
+        }),
       });
       const created = await parseApiData<ToolDetailPayload>(response);
       setToast(`工具“${created.name}”已创建。`);
@@ -207,6 +219,20 @@ export function ToolUploadPage() {
                     />
                   </label>
                 </div>
+                {file ? (
+                  <div className={pageStyles.uploadHint}>
+                    <div>
+                      {file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)
+                    </div>
+                    <div>
+                      {uploadState.status} · {uploadState.uploadedChunks}/{uploadState.totalChunks || 0}
+                    </div>
+                    <div className={pageStyles.progressBar}>
+                      <span style={{ width: `${uploadState.progress}%` }} />
+                    </div>
+                    <div>{uploadState.progress.toFixed(1)}%</div>
+                  </div>
+                ) : null}
 
                 <div className={pageStyles.uploadGrid2}>
                   <label className={styles.field}>

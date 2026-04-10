@@ -8,6 +8,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { ApiEnvelope, ToolDetailPayload, ToolVersionRow } from "@/lib/contracts";
 import { apiFetch, apiUrl } from "@/lib/api-client";
 import { hasDashboardPermission } from "@/lib/dashboard-navigation";
+import { runChunkedUpload, type UploadState } from "@/lib/tool-upload";
 import { normalizeToolStatus, toolStatusLabel } from "@/lib/tool-status";
 import { TOOLS_MANAGE_ACCESS, TOOLS_VIEW_ACCESS } from "@/lib/tool-permissions";
 import { useToolDetailBffResource } from "@/lib/use-tools-bff-resource";
@@ -234,6 +235,14 @@ export function ToolDetailPage({ toolId }: ToolDetailPageProps) {
   const [versionNotes, setVersionNotes] = useState("");
   const [versionChangelog, setVersionChangelog] = useState("");
   const [versionFile, setVersionFile] = useState<File | null>(null);
+  const [uploadState, setUploadState] = useState<UploadState>({
+    status: "waiting",
+    uploadId: null,
+    uploadedChunks: 0,
+    totalChunks: 0,
+    progress: 0,
+    error: null,
+  });
 
   useEffect(() => {
     if (detailState.kind !== "ready" || editing) {
@@ -311,26 +320,28 @@ export function ToolDetailPage({ toolId }: ToolDetailPageProps) {
     setBusy(true);
     setFeedback(null);
     try {
-      const formData = new FormData();
+      let uploadId = "";
+      if (versionFile) {
+        const result = await runChunkedUpload({
+          file: versionFile,
+          target: "tool_version",
+          toolId: Number(toolId),
+          onState: setUploadState,
+        });
+        uploadId = result.uploadId;
+      }
       const values = {
         version: versionNumber.trim(),
         release_notes: versionNotes.trim(),
         changelog: versionChangelog.trim(),
+        upload_id: uploadId,
+        file_name: versionFile?.name ?? "",
       };
-
-      Object.entries(values).forEach(([key, value]) => {
-        if (value) {
-          formData.append(key, value);
-        }
-      });
-      if (versionFile) {
-        formData.append("file", versionFile);
-        formData.append("file_name", versionFile.name);
-      }
 
       const response = await apiFetch(`/api/tools/${toolId}/versions`, {
         method: "POST",
-        body: formData,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(values),
       });
       await parseApiData(response);
       setVersionNumber("");
@@ -721,6 +732,21 @@ export function ToolDetailPage({ toolId }: ToolDetailPageProps) {
                             type="file"
                           />
                         </label>
+                        {versionFile ? (
+                          <div className={pageStyles.uploadHint}>
+                            <div>
+                              {versionFile.name} ({(versionFile.size / 1024 / 1024).toFixed(2)} MB)
+                            </div>
+                            <div>
+                              {uploadState.status} · {uploadState.uploadedChunks}/
+                              {uploadState.totalChunks || 0}
+                            </div>
+                            <div className={pageStyles.progressBar}>
+                              <span style={{ width: `${uploadState.progress}%` }} />
+                            </div>
+                            <div>{uploadState.progress.toFixed(1)}%</div>
+                          </div>
+                        ) : null}
 
                         <div className={styles.actions}>
                           <button

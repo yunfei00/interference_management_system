@@ -17,17 +17,25 @@ from apps.common.api import BaselineModelViewSet
 from apps.common.api_contract import build_api_envelope
 from apps.common.permissions import MappedPermission
 
-from .models import ToolVersion
+from .models import Tool, ToolUploadSession, ToolVersion
 from .selectors import get_tool_detail_queryset, get_tool_list_queryset
 from .serializers import (
     ToolCreateSerializer,
     ToolDetailSerializer,
+    ToolUploadInitSerializer,
+    ToolUploadSessionSerializer,
     ToolListSerializer,
     ToolUpdateSerializer,
     ToolVersionCreateSerializer,
     ToolVersionSerializer,
 )
-from .services import sync_tool_latest
+from .services import (
+    build_upload_progress,
+    create_upload_session,
+    merge_upload_chunks,
+    save_upload_chunk,
+    sync_tool_latest,
+)
 
 
 def delete_version_file(version: ToolVersion) -> None:
@@ -74,6 +82,26 @@ class ToolViewSet(BaselineModelViewSet):
             "tools.manage",
         ],
         "set_version_latest": [
+            "department.interference.view",
+            "interference.tools.view",
+            "tools.manage",
+        ],
+        "upload_init": [
+            "department.interference.view",
+            "interference.tools.view",
+            "tools.manage",
+        ],
+        "upload_chunk": [
+            "department.interference.view",
+            "interference.tools.view",
+            "tools.manage",
+        ],
+        "upload_status": [
+            "department.interference.view",
+            "interference.tools.view",
+            "tools.manage",
+        ],
+        "upload_merge": [
             "department.interference.view",
             "interference.tools.view",
             "tools.manage",
@@ -209,4 +237,105 @@ class ToolViewSet(BaselineModelViewSet):
             version.file.open("rb"),
             as_attachment=True,
             filename=version.file_name or Path(version.file.name).name,
+        )
+
+    @extend_schema(tags=["Tools"])
+    @action(detail=False, methods=["post"], url_path="uploads/init", parser_classes=[JSONParser])
+    def upload_init(self, request):
+        serializer = ToolUploadInitSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        tool = None
+        if data["target"] == ToolUploadSession.TARGET_TOOL_VERSION:
+            tool = get_object_or_404(Tool.objects.all(), pk=data.get("tool_id"))
+
+        upload = create_upload_session(
+            user=request.user,
+            filename=data["filename"],
+            file_size=data["file_size"],
+            chunk_size=data["chunk_size"],
+            total_chunks=data["total_chunks"],
+            checksum=data.get("checksum") or "",
+            target=data["target"],
+            tool=tool,
+        )
+        return self.success_response(
+            data={
+                **ToolUploadSessionSerializer(upload).data,
+                "uploaded_chunks": [],
+                "recommended_chunk_size": upload.chunk_size,
+            },
+            code="created",
+            message="Upload session created successfully.",
+            status_code=status.HTTP_201_CREATED,
+        )
+
+    def _get_upload(self, request, upload_id: str) -> ToolUploadSession:
+        return get_object_or_404(
+            ToolUploadSession.objects.select_related("tool"),
+            upload_id=upload_id,
+            user=request.user,
+        )
+
+    @extend_schema(tags=["Tools"])
+    @action(
+        detail=False,
+        methods=["post"],
+        url_path=r"uploads/(?P<upload_id>[^/.]+)/chunks/(?P<chunk_index>\d+)",
+        parser_classes=[MultiPartParser, FormParser],
+    )
+    def upload_chunk(self, request, upload_id=None, chunk_index=None):
+        upload = self._get_upload(request, upload_id)
+        chunk_file = request.FILES.get("chunk")
+        if chunk_file is None:
+            return self.success_response(
+                code="invalid_chunk",
+                message="Chunk file is required.",
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            save_upload_chunk(upload, int(chunk_index), chunk_file)
+        except ValueError as exc:
+            return self.success_response(
+                data=None,
+                code="invalid_chunk",
+                message=str(exc),
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+        upload.refresh_from_db()
+        return self.success_response(data=build_upload_progress(upload), message="Chunk uploaded.")
+
+    @extend_schema(tags=["Tools"])
+    @action(
+        detail=False,
+        methods=["get"],
+        url_path=r"uploads/(?P<upload_id>[^/.]+)/status",
+    )
+    def upload_status(self, request, upload_id=None):
+        upload = self._get_upload(request, upload_id)
+        return self.success_response(data=build_upload_progress(upload))
+
+    @extend_schema(tags=["Tools"])
+    @action(
+        detail=False,
+        methods=["post"],
+        url_path=r"uploads/(?P<upload_id>[^/.]+)/merge",
+    )
+    def upload_merge(self, request, upload_id=None):
+        upload = self._get_upload(request, upload_id)
+        try:
+            merge_upload_chunks(upload)
+        except ValueError as exc:
+            return self.success_response(
+                data=build_upload_progress(upload),
+                code="merge_failed",
+                message=str(exc),
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+        upload.refresh_from_db()
+        return self.success_response(
+            data=build_upload_progress(upload),
+            code="merged",
+            message="Upload merged successfully.",
         )

@@ -169,6 +169,48 @@ export type ToolDetailPayload = ToolListItem & {
   versions: ToolVersionRow[];
 };
 
+export type ToolUploadTarget = "tool_create" | "tool_version";
+export type UploadStatus = "waiting" | "uploading" | "merging" | "completed" | "failed";
+
+export type ToolUploadInitPayload = {
+  filename: string;
+  file_size: number;
+  chunk_size: number;
+  total_chunks: number;
+  checksum?: string;
+  target: ToolUploadTarget;
+  tool_id?: number;
+};
+
+export type ToolUploadProgress = {
+  upload_id: string;
+  status: UploadStatus;
+  uploaded_chunks: number[];
+  uploaded_chunks_count: number;
+  total_chunks: number;
+  uploaded_bytes: number;
+  file_size: number;
+  progress: number;
+  filename: string;
+  merged_file_path: string;
+  error_message: string;
+};
+
+export type ToolUploadSession = {
+  upload_id: string;
+  status: UploadStatus;
+  filename: string;
+  file_size: number;
+  chunk_size: number;
+  total_chunks: number;
+  uploaded_chunks_count: number;
+  uploaded_chunks: number[];
+  progress: number;
+  error_message: string;
+  merged_file_path: string;
+  recommended_chunk_size: number;
+};
+
 /** @deprecated 请使用 ToolListItem */
 export type ToolItem = ToolListItem;
 

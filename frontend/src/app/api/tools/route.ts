@@ -6,9 +6,11 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const formData = await request.formData();
+  const contentType = request.headers.get("content-type");
+  const body = await request.arrayBuffer();
   return proxyProtectedJson("/api/v1/tools/", {
     method: "POST",
-    body: formData,
+    headers: contentType ? { "Content-Type": contentType } : undefined,
+    body,
   });
 }

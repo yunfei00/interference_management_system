@@ -23,6 +23,15 @@ function pickRegisterError(payload: ApiEnvelope<unknown> | null, fallback: strin
   return payload.message || fallback;
 }
 
+async function parseEnvelopeSafely(response: Response): Promise<ApiEnvelope<unknown> | null> {
+  try {
+    const payload = (await response.json()) as ApiEnvelope<unknown>;
+    return payload && typeof payload === "object" ? payload : null;
+  } catch {
+    return null;
+  }
+}
+
 export function RegisterForm({
   onSwitchToLogin,
 }: {
@@ -116,9 +125,11 @@ export function RegisterForm({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-      const payload = (await response.json()) as ApiEnvelope<{ username?: string } | null>;
+      const payload = (await parseEnvelopeSafely(response)) as ApiEnvelope<
+        { username?: string } | null
+      > | null;
 
-      if (!response.ok || !payload.success) {
+      if (!response.ok || !payload?.success) {
         setError(pickRegisterError(payload, "注册失败，请检查填写内容。"));
         return;
       }

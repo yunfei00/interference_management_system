@@ -43,7 +43,15 @@ function flattenFieldErrors(input: unknown): string | null {
 }
 
 async function parseApiData<T>(response: Response): Promise<T> {
-  const json = (await response.json()) as unknown;
+  const rawText = await response.text();
+  let json: unknown = null;
+  if (rawText.trim()) {
+    try {
+      json = JSON.parse(rawText) as unknown;
+    } catch {
+      json = null;
+    }
+  }
   const payload =
     json && typeof json === "object" && "success" in json
       ? (json as Partial<ApiEnvelope<T>>)
@@ -52,6 +60,9 @@ async function parseApiData<T>(response: Response): Promise<T> {
   const data = (payload?.data ?? json) as T | null;
 
   if (!response.ok || !success) {
+    if (response.status === 413) {
+      throw new Error("上传文件过大，请压缩后重试，或联系管理员提升上传大小限制。");
+    }
     const message =
       payload?.message?.trim() ||
       flattenFieldErrors(payload?.data ?? json) ||

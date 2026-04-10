@@ -90,32 +90,34 @@ def get_chunk_file_path(upload: ToolUploadSession, chunk_index: int) -> Path:
     return base / f"chunk_{chunk_index:06d}.part"
 
 
+@transaction.atomic
 def save_upload_chunk(upload: ToolUploadSession, chunk_index: int, chunk_file: UploadedFile) -> None:
-    if chunk_index < 0 or chunk_index >= upload.total_chunks:
+    locked = ToolUploadSession.objects.select_for_update().get(pk=upload.pk)
+    if chunk_index < 0 or chunk_index >= locked.total_chunks:
         raise ValueError("chunk index out of range")
-    if upload.status in (ToolUploadSession.STATUS_COMPLETED, ToolUploadSession.STATUS_MERGING):
+    if locked.status in (ToolUploadSession.STATUS_COMPLETED, ToolUploadSession.STATUS_MERGING):
         return
-    if upload.consumed_at is not None:
+    if locked.consumed_at is not None:
         raise ValueError("upload already consumed")
 
-    chunk_path = get_chunk_file_path(upload, chunk_index)
+    chunk_path = get_chunk_file_path(locked, chunk_index)
     chunk_path.parent.mkdir(parents=True, exist_ok=True)
     with chunk_path.open("wb") as output:
         for part in chunk_file.chunks():
             output.write(part)
 
-    uploaded_chunks: set[int] = set(int(item) for item in (upload.uploaded_chunks or []))
+    uploaded_chunks: set[int] = set(int(item) for item in (locked.uploaded_chunks or []))
     uploaded_chunks.add(int(chunk_index))
     ordered = sorted(uploaded_chunks)
-    upload.uploaded_chunks = ordered
-    upload.uploaded_chunks_count = len(ordered)
-    upload.status = (
+    locked.uploaded_chunks = ordered
+    locked.uploaded_chunks_count = len(ordered)
+    locked.status = (
         ToolUploadSession.STATUS_UPLOADING
-        if len(ordered) < upload.total_chunks
+        if len(ordered) < locked.total_chunks
         else ToolUploadSession.STATUS_WAITING
     )
-    upload.error_message = ""
-    upload.save(
+    locked.error_message = ""
+    locked.save(
         update_fields=[
             "uploaded_chunks",
             "uploaded_chunks_count",
@@ -133,33 +135,46 @@ def _iter_merge_chunk_paths(upload: ToolUploadSession) -> Iterable[Path]:
 
 @transaction.atomic
 def merge_upload_chunks(upload: ToolUploadSession) -> ToolUploadSession:
-    missing = [idx for idx in range(upload.total_chunks) if idx not in set(upload.uploaded_chunks or [])]
+    locked = ToolUploadSession.objects.select_for_update().get(pk=upload.pk)
+    uploaded = set(int(idx) for idx in (locked.uploaded_chunks or []))
+    missing = [idx for idx in range(locked.total_chunks) if idx not in uploaded]
     if missing:
-        upload.status = ToolUploadSession.STATUS_FAILED
-        upload.error_message = f"missing chunks: {missing[:10]}"
-        upload.save(update_fields=["status", "error_message", "updated_at"])
+        # 兼容并发写入导致的 uploaded_chunks 元数据暂时不一致：以磁盘分片文件兜底重建。
+        rebuilt = [
+            idx for idx in range(locked.total_chunks) if get_chunk_file_path(locked, idx).exists()
+        ]
+        if len(rebuilt) > len(uploaded):
+            uploaded = set(rebuilt)
+            missing = [idx for idx in range(locked.total_chunks) if idx not in uploaded]
+            locked.uploaded_chunks = sorted(uploaded)
+            locked.uploaded_chunks_count = len(uploaded)
+            locked.save(update_fields=["uploaded_chunks", "uploaded_chunks_count", "updated_at"])
+    if missing:
+        locked.status = ToolUploadSession.STATUS_FAILED
+        locked.error_message = f"missing chunks: {missing[:10]}"
+        locked.save(update_fields=["status", "error_message", "updated_at"])
         raise ValueError("missing chunks")
 
-    upload.status = ToolUploadSession.STATUS_MERGING
-    upload.error_message = ""
-    upload.save(update_fields=["status", "error_message", "updated_at"])
+    locked.status = ToolUploadSession.STATUS_MERGING
+    locked.error_message = ""
+    locked.save(update_fields=["status", "error_message", "updated_at"])
 
-    merged_dir = get_upload_merged_dir(upload.upload_id)
+    merged_dir = get_upload_merged_dir(locked.upload_id)
     merged_dir.mkdir(parents=True, exist_ok=True)
-    merged_path = merged_dir / sanitize_upload_filename(upload.filename)
+    merged_path = merged_dir / sanitize_upload_filename(locked.filename)
 
     with merged_path.open("wb") as merged_output:
-        for chunk_path in _iter_merge_chunk_paths(upload):
+        for chunk_path in _iter_merge_chunk_paths(locked):
             if not chunk_path.exists():
                 raise ValueError(f"chunk missing during merge: {chunk_path.name}")
             with chunk_path.open("rb") as source:
                 shutil.copyfileobj(source, merged_output, length=1024 * 1024)
 
-    upload.status = ToolUploadSession.STATUS_COMPLETED
-    upload.merged_file_path = str(merged_path)
-    upload.completed_at = timezone.now()
-    upload.error_message = ""
-    upload.save(
+    locked.status = ToolUploadSession.STATUS_COMPLETED
+    locked.merged_file_path = str(merged_path)
+    locked.completed_at = timezone.now()
+    locked.error_message = ""
+    locked.save(
         update_fields=[
             "status",
             "merged_file_path",
@@ -168,7 +183,7 @@ def merge_upload_chunks(upload: ToolUploadSession) -> ToolUploadSession:
             "updated_at",
         ]
     )
-    return upload
+    return locked
 
 
 def build_upload_progress(upload: ToolUploadSession) -> dict:

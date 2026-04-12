@@ -19,13 +19,14 @@ from accounts.api_auth import (
 )
 from datahub.api import DatasetViewSet
 from ops.api import BatchCommandAPIView, CommandTaskViewSet, HostViewSet
-from tool_management_project.api import ToolViewSet
+from tool_management_project.api import ToolVersionViewSet, ToolViewSet
 
 
 def build_api_router():
     router = routers.DefaultRouter()
     router.register("datasets", DatasetViewSet, basename="dataset")
     router.register("tools", ToolViewSet, basename="tool")
+    router.register("versions", ToolVersionViewSet, basename="version")
     router.register("hosts", HostViewSet, basename="host")
     router.register("commands", CommandTaskViewSet, basename="command")
     router.register("admin/users", AdminUserViewSet, basename="admin_user")

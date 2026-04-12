@@ -1,241 +1,374 @@
 "use client";
 
-import type { Route } from "next";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
-
-import type {
-  ApiEnvelope,
-  ToolDetailPayload,
-  ToolVersionBindUploadPayload,
-  ToolVersionRow,
-} from "@/lib/contracts";
-import {
-  ApiResponseError,
-  apiFetch,
-  apiUrl,
-  parseApiResponse,
-} from "@/lib/api-client";
 import { hasDashboardPermission } from "@/lib/dashboard-navigation";
-import { runChunkedUpload, type UploadState } from "@/lib/tool-upload";
-import { normalizeToolStatus, toolStatusLabel } from "@/lib/tool-status";
+import type { UploadState } from "@/lib/tool-upload";
 import { TOOLS_MANAGE_ACCESS, TOOLS_VIEW_ACCESS } from "@/lib/tool-permissions";
-import { useToolDetailBffResource } from "@/lib/use-tools-bff-resource";
+import { useToolDetailController } from "@/lib/use-tool-detail-controller";
 
 import { DepartmentAccessGuard } from "./department-access-guard";
 import { useDashboardSession } from "./dashboard-session-provider";
-import styles from "./management-page.module.css";
-import pageStyles from "./tools-pages.module.css";
-
-const listHref = "/dashboard/electromagnetic/interference/tools" as Route;
-const BIND_UPLOAD_RECOVERY_TIMEOUT_MS = 30 * 1000;
-const BIND_UPLOAD_RECOVERY_INTERVAL_MS = 1500;
-
-function sleep(ms: number) {
-  return new Promise<void>((resolve) => {
-    window.setTimeout(resolve, ms);
-  });
-}
-
-function isBackendTimeoutError(error: unknown) {
-  if (error instanceof ApiResponseError) {
-    return error.status === 504 || error.code === "backend_timeout";
-  }
-
-  if (!(error instanceof Error)) {
-    return false;
-  }
-
-  const normalized = `${error.name} ${error.message}`.toLowerCase();
-  return (
-    normalized.includes("timeout") ||
-    normalized.includes("timed out") ||
-    normalized.includes("aborted")
-  );
-}
-
-function hasNewlyBoundVersion(
-  detail: ToolDetailPayload,
-  expectedVersion: string,
-  existingVersionIds: Set<number>,
-) {
-  const normalizedVersion = expectedVersion.trim();
-  return detail.versions.some(
-    (row) =>
-      row.version.trim() === normalizedVersion && !existingVersionIds.has(row.id),
-  );
-}
-
-function statusClass(status: string) {
-  switch (normalizeToolStatus(status)) {
-    case "active":
-      return pageStyles.statusActive;
-    case "testing":
-      return pageStyles.statusTesting;
-    default:
-      return pageStyles.statusDeprecated;
-  }
-}
-
-function splitTags(tags: string | null | undefined): string[] {
-  return String(tags ?? "")
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean);
-}
-
-function flattenFieldErrors(input: unknown): string | null {
-  if (input == null || typeof input !== "object") {
-    return null;
-  }
-
-  const parts: string[] = [];
-  for (const [key, value] of Object.entries(input as Record<string, unknown>)) {
-    if (Array.isArray(value)) {
-      parts.push(`${key}: ${value.map(String).join(" ")}`);
-      continue;
-    }
-    if (typeof value === "string" && value.trim()) {
-      parts.push(`${key}: ${value}`);
-      continue;
-    }
-    if (value && typeof value === "object") {
-      const nested = flattenFieldErrors(value);
-      if (nested) {
-        parts.push(`${key}: ${nested}`);
-      }
-    }
-  }
-
-  return parts.length ? parts.join(" / ") : null;
-}
-
-async function parseApiData<T>(response: Response): Promise<T> {
-  const rawText = await response.text();
-  let json: unknown = null;
-  if (rawText.trim()) {
-    try {
-      json = JSON.parse(rawText) as unknown;
-    } catch {
-      json = null;
-    }
-  }
-  const payload =
-    json && typeof json === "object" && "success" in json
-      ? (json as Partial<ApiEnvelope<T>>)
-      : null;
-  const success = payload?.success ?? response.ok;
-  const data = (payload?.data ?? json) as T | null;
-
-  if (!response.ok || !success) {
-    if (response.status === 413) {
-      throw new Error("上传文件过大，请压缩后重试，或联系管理员提升上传大小限制。");
-    }
-    const message =
-      payload?.message?.trim() ||
-      flattenFieldErrors(payload?.data ?? json) ||
-      "请求失败，请稍后重试。";
-    throw new Error(message);
-  }
-
-  return data as T;
-}
-
-function VersionCard({
-  toolId,
-  row,
-  canManage,
-  onDelete,
-  onSetLatest,
-}: {
-  toolId: string;
-  row: ToolVersionRow;
-  canManage: boolean;
-  onDelete: (row: ToolVersionRow) => void;
-  onSetLatest: (row: ToolVersionRow) => void;
-}) {
-  return (
-    <article
-      className={`${pageStyles.versionShell} ${
-        row.is_latest ? pageStyles.versionShellLatest : pageStyles.versionShellLegacy
-      }`}
-    >
-      <div className={pageStyles.versionLine1}>
-        <div className={pageStyles.versionLine1Left}>
-          <span className={pageStyles.versionCode}>{row.version}</span>
-          <span
-            className={
-              row.is_latest
-                ? pageStyles.versionBadgeLatest
-                : pageStyles.versionBadgeHistory
-            }
-          >
-            {row.is_latest ? "当前" : "历史"}
-          </span>
-        </div>
-        <time className={pageStyles.versionTime} dateTime={row.created_at}>
-          {new Date(row.created_at).toLocaleString("zh-CN")}
-        </time>
-      </div>
-
-      <p className={pageStyles.versionReleaseNotes}>
-        {row.release_notes?.trim() || "暂无发布说明"}
-      </p>
-
-      <div className={pageStyles.versionChangelogBlock}>
-        <span className={pageStyles.versionSectionLabel}>变更记录</span>
-        <pre className={pageStyles.changelogPreCompact}>
-          {row.changelog?.trim() || "暂无变更记录"}
-        </pre>
-      </div>
-
-      <div className={pageStyles.versionRowFooter}>
-        <div className={pageStyles.versionAssetStrip}>
-          <span>{row.file_name || "未上传附件"}</span>
-          {row.file_size ? <span>{(row.file_size / 1024).toFixed(1)} KB</span> : null}
-          {row.created_by_username ? <span>发布人 {row.created_by_username}</span> : null}
-        </div>
-
-        <div className={pageStyles.versionRowFooterActions}>
-          {row.file_name ? (
-            <a
-              className={pageStyles.downloadButton}
-              href={apiUrl(`/api/tools/${toolId}/versions/${row.id}/download`)}
-            >
-              下载
-            </a>
-          ) : null}
-          {canManage && !row.is_latest ? (
-            <button
-              className={pageStyles.versionAdminBtn}
-              onClick={() => onSetLatest(row)}
-              type="button"
-            >
-              设为当前
-            </button>
-          ) : null}
-          {canManage ? (
-            <button
-              className={`${pageStyles.versionAdminBtn} ${pageStyles.versionAdminBtnDanger}`}
-              onClick={() => onDelete(row)}
-              type="button"
-            >
-              删除版本
-            </button>
-          ) : null}
-        </div>
-      </div>
-    </article>
-  );
-}
+import { ToolActions } from "./ToolActions";
+import { ToolInfoCard } from "./ToolInfoCard";
+import { VersionList } from "./VersionList";
+import styles from "./tool-detail.module.css";
 
 type ToolDetailPageProps = {
   toolId: string;
 };
 
+function uploadStatusLabel(status: UploadState["status"]) {
+  switch (status) {
+    case "preparing":
+      return "Preparing upload...";
+    case "uploading":
+      return "Uploading chunks...";
+    case "merging":
+      return "Merging uploaded file...";
+    case "completed":
+      return "Upload completed.";
+    case "failed":
+      return "Upload failed.";
+    default:
+      return "Waiting for upload.";
+  }
+}
+
+function UploadPanel(props: {
+  busy: boolean;
+  uploadState: UploadState;
+  versionForm: {
+    version: string;
+    release_notes: string;
+    changelog: string;
+    file: File | null;
+  };
+  onVersionChange: (value: string) => void;
+  onReleaseNotesChange: (value: string) => void;
+  onChangelogChange: (value: string) => void;
+  onFileChange: (value: File | null) => void;
+  onCancel: () => void;
+  onSubmit: () => void;
+}) {
+  const {
+    busy,
+    uploadState,
+    versionForm,
+    onVersionChange,
+    onReleaseNotesChange,
+    onChangelogChange,
+    onFileChange,
+    onCancel,
+    onSubmit,
+  } = props;
+  const shouldShowProgress =
+    uploadState.status !== "waiting" || Boolean(uploadState.error);
+
+  return (
+    <section className={`${styles.surface} ${styles.panel}`}>
+      <div className={styles.panelHeader}>
+        <div className={styles.panelTitle}>Upload New Version</div>
+        <div className={styles.panelDescription}>
+          Complete the version metadata first, then upload the package in one guided
+          flow.
+        </div>
+      </div>
+
+      <div className={`${styles.formGrid} ${styles.formGridTwo}`}>
+        <label className={styles.field}>
+          <span className={styles.fieldLabel}>Version</span>
+          <input
+            className={styles.input}
+            disabled={busy}
+            onChange={(event) => onVersionChange(event.target.value)}
+            placeholder="v34"
+            type="text"
+            value={versionForm.version}
+          />
+        </label>
+
+        <label className={styles.field}>
+          <span className={styles.fieldLabel}>Package File</span>
+          <input
+            className={styles.fileInput}
+            disabled={busy}
+            onChange={(event) => onFileChange(event.target.files?.[0] ?? null)}
+            type="file"
+          />
+          <span className={styles.mutedText}>
+            {versionForm.file ? versionForm.file.name : "No file selected."}
+          </span>
+        </label>
+      </div>
+
+      <div className={styles.formGrid}>
+        <label className={styles.field}>
+          <span className={styles.fieldLabel}>Release Notes</span>
+          <textarea
+            className={styles.textarea}
+            disabled={busy}
+            onChange={(event) => onReleaseNotesChange(event.target.value)}
+            placeholder="Describe the goal of this release."
+            value={versionForm.release_notes}
+          />
+        </label>
+
+        <label className={styles.field}>
+          <span className={styles.fieldLabel}>Change Log</span>
+          <textarea
+            className={styles.textarea}
+            disabled={busy}
+            onChange={(event) => onChangelogChange(event.target.value)}
+            placeholder="List the important changes in this version."
+            value={versionForm.changelog}
+          />
+        </label>
+      </div>
+
+      {shouldShowProgress ? (
+        <div className={styles.progressCard}>
+          <div className={styles.progressMeta}>
+            <span>{uploadStatusLabel(uploadState.status)}</span>
+            <span>
+              {uploadState.uploadedChunks}/{uploadState.totalChunks || 0} chunks
+            </span>
+            <span>{Math.round(uploadState.progress)}%</span>
+            {uploadState.error ? <span>{uploadState.error}</span> : null}
+          </div>
+          <div className={styles.progressTrack}>
+            <div
+              className={styles.progressBar}
+              style={{ width: `${Math.max(0, Math.min(uploadState.progress, 100))}%` }}
+            />
+          </div>
+        </div>
+      ) : null}
+
+      <div className={styles.panelActions}>
+        <button className={styles.buttonGhost} disabled={busy} onClick={onCancel} type="button">
+          Cancel
+        </button>
+        <button className={styles.button} disabled={busy} onClick={onSubmit} type="button">
+          {busy ? "Uploading..." : "Upload Version"}
+        </button>
+      </div>
+    </section>
+  );
+}
+
+function EditPanel(props: {
+  busy: boolean;
+  form: {
+    name: string;
+    code: string;
+    category: string;
+    department: string;
+    summary: string;
+    detail: string;
+    status: string;
+    icon: string;
+    tags: string;
+  };
+  onChange: <K extends
+    | "name"
+    | "code"
+    | "category"
+    | "department"
+    | "summary"
+    | "detail"
+    | "status"
+    | "icon"
+    | "tags">(
+    key: K,
+    value: string,
+  ) => void;
+  onCancel: () => void;
+  onSubmit: () => void;
+}) {
+  const { busy, form, onChange, onCancel, onSubmit } = props;
+
+  return (
+    <section className={`${styles.surface} ${styles.panel}`}>
+      <div className={styles.panelHeader}>
+        <div className={styles.panelTitle}>Edit Tool</div>
+        <div className={styles.panelDescription}>
+          Maintain tool metadata from one focused panel instead of scattered actions.
+        </div>
+      </div>
+
+      <div className={`${styles.formGrid} ${styles.formGridTwo}`}>
+        <label className={styles.field}>
+          <span className={styles.fieldLabel}>Name</span>
+          <input
+            className={styles.input}
+            disabled={busy}
+            onChange={(event) => onChange("name", event.target.value)}
+            value={form.name}
+          />
+        </label>
+
+        <label className={styles.field}>
+          <span className={styles.fieldLabel}>Code</span>
+          <input
+            className={styles.input}
+            disabled={busy}
+            onChange={(event) => onChange("code", event.target.value)}
+            value={form.code}
+          />
+        </label>
+
+        <label className={styles.field}>
+          <span className={styles.fieldLabel}>Category</span>
+          <input
+            className={styles.input}
+            disabled={busy}
+            onChange={(event) => onChange("category", event.target.value)}
+            value={form.category}
+          />
+        </label>
+
+        <label className={styles.field}>
+          <span className={styles.fieldLabel}>Department</span>
+          <input
+            className={styles.input}
+            disabled={busy}
+            onChange={(event) => onChange("department", event.target.value)}
+            value={form.department}
+          />
+        </label>
+
+        <label className={styles.field}>
+          <span className={styles.fieldLabel}>Status</span>
+          <select
+            className={styles.select}
+            disabled={busy}
+            onChange={(event) => onChange("status", event.target.value)}
+            value={form.status}
+          >
+            <option value="active">Available</option>
+            <option value="testing">Testing</option>
+            <option value="deprecated">Deprecated</option>
+          </select>
+        </label>
+
+        <label className={styles.field}>
+          <span className={styles.fieldLabel}>Icon</span>
+          <input
+            className={styles.input}
+            disabled={busy}
+            onChange={(event) => onChange("icon", event.target.value)}
+            value={form.icon}
+          />
+        </label>
+
+        <label className={styles.field}>
+          <span className={styles.fieldLabel}>Tags</span>
+          <input
+            className={styles.input}
+            disabled={busy}
+            onChange={(event) => onChange("tags", event.target.value)}
+            placeholder="python, emc, offline"
+            value={form.tags}
+          />
+        </label>
+      </div>
+
+      <div className={styles.formGrid}>
+        <label className={styles.field}>
+          <span className={styles.fieldLabel}>Summary</span>
+          <textarea
+            className={styles.textarea}
+            disabled={busy}
+            onChange={(event) => onChange("summary", event.target.value)}
+            value={form.summary}
+          />
+        </label>
+
+        <label className={styles.field}>
+          <span className={styles.fieldLabel}>Detail</span>
+          <textarea
+            className={styles.textarea}
+            disabled={busy}
+            onChange={(event) => onChange("detail", event.target.value)}
+            value={form.detail}
+          />
+        </label>
+      </div>
+
+      <div className={styles.panelActions}>
+        <button className={styles.buttonGhost} disabled={busy} onClick={onCancel} type="button">
+          Cancel
+        </button>
+        <button className={styles.button} disabled={busy} onClick={onSubmit} type="button">
+          {busy ? "Saving..." : "Save Changes"}
+        </button>
+      </div>
+    </section>
+  );
+}
+
+function LoadingSkeleton() {
+  return (
+    <div className={styles.skeletonLayout}>
+      <div className={styles.skeletonBlock}>
+        <section className={`${styles.surface} ${styles.infoCard}`}>
+          <div className={styles.skeletonLine} style={{ width: "40%" }} />
+          <div className={styles.skeletonLine} style={{ width: "75%", height: "1.35rem" }} />
+          <div className={styles.skeletonLine} style={{ width: "55%" }} />
+          <div className={styles.skeletonLine} style={{ width: "100%", height: "4.5rem" }} />
+          <div className={styles.skeletonLine} style={{ width: "85%" }} />
+          <div className={styles.skeletonLine} style={{ width: "78%" }} />
+          <div className={styles.skeletonLine} style={{ width: "72%" }} />
+        </section>
+
+        <section className={`${styles.surface} ${styles.currentCard}`}>
+          <div className={styles.skeletonLine} style={{ width: "38%" }} />
+          <div className={styles.skeletonLine} style={{ width: "68%", height: "1.1rem" }} />
+          <div className={styles.skeletonLine} style={{ width: "92%" }} />
+          <div className={styles.skeletonLine} style={{ width: "74%" }} />
+        </section>
+      </div>
+
+      <div className={styles.skeletonBlock}>
+        <section className={`${styles.surface} ${styles.actionBar}`}>
+          <div className={styles.skeletonLine} style={{ width: "24%", height: "1.1rem" }} />
+          <div className={styles.skeletonLine} style={{ width: "18%", height: "2.75rem" }} />
+        </section>
+
+        <section className={`${styles.surface} ${styles.listSurface}`}>
+          <div className={styles.listHeader}>
+            <div className={styles.skeletonLine} style={{ width: "18%" }} />
+            <div className={styles.skeletonLine} style={{ width: "52%" }} />
+          </div>
+          <div className={styles.listBody}>
+            <div className={styles.skeletonRow} />
+            <div className={styles.skeletonRow} />
+            <div className={styles.skeletonRow} />
+          </div>
+        </section>
+      </div>
+    </div>
+  );
+}
+
+function ErrorState(props: { message: string; busy: boolean; onRetry: () => void }) {
+  const { message, busy, onRetry } = props;
+
+  return (
+    <section className={`${styles.surface} ${styles.panel}`}>
+      <div className={styles.panelHeader}>
+        <div className={styles.panelTitle}>Unable To Load Tool Detail</div>
+        <div className={styles.panelDescription}>{message}</div>
+      </div>
+      <div className={styles.panelActions}>
+        <button className={styles.buttonSecondary} disabled={busy} onClick={onRetry} type="button">
+          Retry
+        </button>
+      </div>
+    </section>
+  );
+}
+
 export function ToolDetailPage({ toolId }: ToolDetailPageProps) {
-  const router = useRouter();
   const { state: session } = useDashboardSession();
   const ready = session.kind === "ready";
   const permissions = ready ? session.data.permissions : [];
@@ -243,643 +376,112 @@ export function ToolDetailPage({ toolId }: ToolDetailPageProps) {
   const canManage =
     ready && hasDashboardPermission(permissions, [...TOOLS_MANAGE_ACCESS]);
 
-  const { state: detailState, refetch } = useToolDetailBffResource({
+  const {
+    status,
+    errorMessage,
+    data,
+    refreshing,
+    busyAction,
+    feedback,
+    activePanel,
+    uploadState,
+    editForm,
+    versionForm,
+    openPanel,
+    closePanel,
+    refresh,
+    updateEditField,
+    updateVersionField,
+    submitEdit,
+    submitVersion,
+    handleDeleteTool,
+    handleDeleteVersion,
+    handleSetCurrent,
+  } = useToolDetailController({
     toolId,
     enabled: canView && Boolean(toolId),
   });
 
-  const versions = useMemo(() => {
-    if (detailState.kind !== "ready") {
-      return [];
-    }
-    return [...detailState.data.versions].sort(
-      (left, right) =>
-        new Date(right.created_at).getTime() - new Date(left.created_at).getTime(),
-    );
-  }, [detailState]);
-
-  const tags = useMemo(
-    () => (detailState.kind === "ready" ? splitTags(detailState.data.tags) : []),
-    [detailState],
-  );
-
-  const [editing, setEditing] = useState(false);
-  const [addingVersion, setAddingVersion] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [feedback, setFeedback] = useState<string | null>(null);
-
-  const [editName, setEditName] = useState("");
-  const [editCode, setEditCode] = useState("");
-  const [editCategory, setEditCategory] = useState("");
-  const [editDepartment, setEditDepartment] = useState("");
-  const [editSummary, setEditSummary] = useState("");
-  const [editDetail, setEditDetail] = useState("");
-  const [editStatus, setEditStatus] = useState("active");
-  const [editIcon, setEditIcon] = useState("");
-  const [editTags, setEditTags] = useState("");
-
-  const [versionNumber, setVersionNumber] = useState("");
-  const [versionNotes, setVersionNotes] = useState("");
-  const [versionChangelog, setVersionChangelog] = useState("");
-  const [versionFile, setVersionFile] = useState<File | null>(null);
-  const [uploadState, setUploadState] = useState<UploadState>({
-    status: "waiting",
-    uploadId: null,
-    uploadedChunks: 0,
-    totalChunks: 0,
-    progress: 0,
-    error: null,
-  });
-  const bindRequestKeyRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    if (detailState.kind !== "ready" || editing) {
-      return;
-    }
-
-    setEditName(detailState.data.name);
-    setEditCode(detailState.data.code);
-    setEditCategory(detailState.data.category);
-    setEditDepartment(detailState.data.department);
-    setEditSummary(detailState.data.summary);
-    setEditDetail(detailState.data.detail);
-    setEditStatus(detailState.data.status);
-    setEditIcon(detailState.data.icon);
-    setEditTags(detailState.data.tags);
-  }, [detailState, editing]);
-
-  async function fetchLatestDetail() {
-    const response = await apiFetch(`/api/tools/${toolId}`);
-    return parseApiResponse<ToolDetailPayload>(response);
-  }
-
-  async function waitForBoundVersion(
-    expectedVersion: string,
-    existingVersionIds: Set<number>,
-  ) {
-    const deadline = Date.now() + BIND_UPLOAD_RECOVERY_TIMEOUT_MS;
-
-    while (true) {
-      try {
-        const detail = await fetchLatestDetail();
-        if (hasNewlyBoundVersion(detail, expectedVersion, existingVersionIds)) {
-          return true;
-        }
-      } catch {
-        // Ignore transient polling failures and keep checking until the deadline.
-      }
-
-      if (Date.now() >= deadline) {
-        return false;
-      }
-
-      await sleep(BIND_UPLOAD_RECOVERY_INTERVAL_MS);
-    }
-  }
-
-  async function saveEdit() {
-    setBusy(true);
-    setFeedback(null);
-    try {
-      const response = await apiFetch(`/api/tools/${toolId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: editName,
-          code: editCode,
-          category: editCategory,
-          department: editDepartment,
-          summary: editSummary,
-          detail: editDetail,
-          status: editStatus,
-          icon: editIcon,
-          tags: editTags,
-        }),
-      });
-      await parseApiData<ToolDetailPayload>(response);
-      setEditing(false);
-      await refetch();
-    } catch (requestError) {
-      setFeedback(
-        requestError instanceof Error ? requestError.message : "保存失败，请稍后重试。",
-      );
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function removeTool() {
-    if (!window.confirm("确认删除整个工具及其所有版本吗？")) {
-      return;
-    }
-
-    setBusy(true);
-    setFeedback(null);
-    try {
-      const response = await apiFetch(`/api/tools/${toolId}`, { method: "DELETE" });
-      await parseApiData(response);
-      router.replace(listHref);
-    } catch (requestError) {
-      setFeedback(
-        requestError instanceof Error ? requestError.message : "删除失败，请稍后重试。",
-      );
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function addVersion() {
-    if (!versionNumber.trim()) {
-      setFeedback("请填写版本号。");
-      return;
-    }
-
-    setBusy(true);
-    setFeedback(null);
-    try {
-      let uploadId = "";
-      if (versionFile) {
-        const result = await runChunkedUpload({
-          file: versionFile,
-          target: "tool_version",
-          toolId: Number(toolId),
-          onState: setUploadState,
-        });
-        uploadId = result.uploadId;
-      }
-      const values: ToolVersionBindUploadPayload = {
-        version: versionNumber.trim(),
-        release_notes: versionNotes.trim(),
-        changelog: versionChangelog.trim(),
-        upload_id: uploadId,
-      };
-      if (uploadId) {
-        const existingVersionIds = new Set(versions.map((row) => row.id));
-        const bindRequestKey = `${toolId}:${values.version}:${uploadId}`;
-        if (bindRequestKeyRef.current === bindRequestKey) {
-          throw new Error("当前版本绑定请求仍在处理中，请稍候。");
-        }
-        bindRequestKeyRef.current = bindRequestKey;
-        try {
-          const response = await apiFetch(`/api/tools/${toolId}/versions/bind-upload`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(values),
-          });
-          await parseApiResponse<ToolVersionRow>(response);
-        } catch (error) {
-          const recovered =
-            isBackendTimeoutError(error) &&
-            (await waitForBoundVersion(values.version, existingVersionIds));
-          if (!recovered) {
-            throw error;
-          }
-        } finally {
-          if (bindRequestKeyRef.current === bindRequestKey) {
-            bindRequestKeyRef.current = null;
-          }
-        }
-      } else {
-        const formData = new FormData();
-        formData.append("version", values.version);
-        formData.append("release_notes", values.release_notes);
-        formData.append("changelog", values.changelog);
-        const response = await apiFetch(`/api/tools/${toolId}/versions`, {
-          method: "POST",
-          body: formData,
-        });
-        await parseApiData<ToolVersionRow>(response);
-      }
-      setVersionNumber("");
-      setVersionNotes("");
-      setVersionChangelog("");
-      setVersionFile(null);
-      setAddingVersion(false);
-      await refetch();
-    } catch (requestError) {
-      setFeedback(
-        requestError instanceof Error ? requestError.message : "新增版本失败，请稍后重试。",
-      );
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function promoteVersion(row: ToolVersionRow) {
-    setBusy(true);
-    setFeedback(null);
-    try {
-      const response = await apiFetch(
-        `/api/tools/${toolId}/versions/${row.id}/set-latest`,
-        { method: "POST" },
-      );
-      await parseApiData(response);
-      await refetch();
-    } catch (requestError) {
-      setFeedback(
-        requestError instanceof Error ? requestError.message : "设为当前版本失败。",
-      );
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function removeVersion(row: ToolVersionRow) {
-    if (!window.confirm(`确认删除版本 ${row.version} 吗？`)) {
-      return;
-    }
-
-    setBusy(true);
-    setFeedback(null);
-    try {
-      const response = await apiFetch(`/api/tools/${toolId}/versions/${row.id}`, {
-        method: "DELETE",
-      });
-      await parseApiData(response);
-      await refetch();
-    } catch (requestError) {
-      setFeedback(
-        requestError instanceof Error ? requestError.message : "删除版本失败，请稍后重试。",
-      );
-    } finally {
-      setBusy(false);
-    }
-  }
+  const busy = Boolean(busyAction);
 
   return (
     <DepartmentAccessGuard
-      description="当前账号无法查看工具详情。"
+      description="View tool metadata, version history, and release operations in one page."
       requiredPermissions={[...TOOLS_VIEW_ACCESS]}
-      title="无法访问工具详情"
+      title="Tool Detail"
     >
-      <section className={styles.content}>
-        <div className={styles.stack}>
-          <div className={pageStyles.detailTopBar}>
-            <Link className="buttonGhost" href={listHref}>
-              返回工具仓库
-            </Link>
-          </div>
+      <div className={styles.page}>
+        <div className={styles.shell}>
+          {status === "loading" ? <LoadingSkeleton /> : null}
 
-          {detailState.kind === "loading" ? (
-            <div className={styles.empty}>正在加载工具详情…</div>
+          {status === "error" ? (
+            <ErrorState
+              busy={refreshing}
+              message={errorMessage || "Unknown error"}
+              onRetry={refresh}
+            />
           ) : null}
 
-          {detailState.kind === "error" ? (
-            <div className={styles.error} role="alert">
-              {detailState.message || "无法加载工具详情，请稍后重试。"}
-            </div>
-          ) : null}
-
-          {detailState.kind === "ready" ? (
-            <div className={pageStyles.container}>
-              <section className={`surface ${styles.panel} ${pageStyles.detailMainCard}`}>
-                <div className={pageStyles.detailToolHeader}>
-                  <h1 className={pageStyles.detailToolName}>{detailState.data.name}</h1>
-                  <p className={pageStyles.detailToolSlug}>
-                    {detailState.data.code} / {detailState.data.category}
-                  </p>
-                  <div className={pageStyles.detailHeroLatest}>
-                    <span className={pageStyles.latestVersionBadge}>
-                      当前版本 {detailState.data.latest_version || "未设置"}
-                    </span>
-                    <span
-                      className={`${pageStyles.statusPill} ${statusClass(
-                        detailState.data.status,
-                      )}`}
-                    >
-                      {toolStatusLabel(detailState.data.status)}
-                    </span>
-                  </div>
-                  <p className={pageStyles.detailLead}>
-                    {detailState.data.summary?.trim() || "暂无摘要"}
-                  </p>
-                  {tags.length ? (
-                    <div className={pageStyles.tagRowTight}>
-                      {tags.map((tag) => (
-                        <span className={pageStyles.tagPill} key={tag}>
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                  ) : null}
-                </div>
-
-                <div className={pageStyles.detailDescriptionBlock}>
-                  <h2 className={pageStyles.detailSectionTitle}>详细说明</h2>
-                  <p className={pageStyles.detailDescriptionBody}>
-                    {detailState.data.detail?.trim() || "暂无详细说明"}
-                  </p>
-                </div>
-
-                <dl className={pageStyles.detailFacts}>
-                  <div className={pageStyles.detailFactRow}>
-                    <dt>所属部门</dt>
-                    <dd>{detailState.data.department}</dd>
-                  </div>
-                  <div className={pageStyles.detailFactRow}>
-                    <dt>维护人</dt>
-                    <dd>{detailState.data.created_by_username || "未记录"}</dd>
-                  </div>
-                  <div className={pageStyles.detailFactRow}>
-                    <dt>更新时间</dt>
-                    <dd>
-                      {detailState.data.updated_at
-                        ? new Date(detailState.data.updated_at).toLocaleString("zh-CN")
-                        : "未记录"}
-                    </dd>
-                  </div>
-                </dl>
-              </section>
-
-              <section className={`surface ${styles.panel} ${pageStyles.versionsPanel}`}>
-                <div className={pageStyles.versionsPanelHead}>
-                  <h2 className={styles.panelTitle}>版本列表</h2>
-                  <p className={pageStyles.versionsPanelHint}>
-                    中间区域专门展示版本历史、附件和版本操作。
-                  </p>
-                </div>
-
-                {versions.length ? (
-                  <div className={pageStyles.versionList}>
-                    {versions.map((row) => (
-                      <VersionCard
-                        canManage={canManage}
-                        key={row.id}
-                        onDelete={removeVersion}
-                        onSetLatest={promoteVersion}
-                        row={row}
-                        toolId={toolId}
-                      />
-                    ))}
-                  </div>
-                ) : (
-                  <div className={styles.empty}>当前工具还没有版本记录。</div>
-                )}
-              </section>
-
-              <aside className={pageStyles.rightPanel}>
-                <section className={`surface ${styles.panel} ${pageStyles.overviewPanel}`}>
-                  <h3 className={pageStyles.asideCardTitle}>概览</h3>
-                  <dl className={pageStyles.overviewDl}>
-                    <div className={pageStyles.overviewDlRow}>
-                      <dt>版本数</dt>
-                      <dd>{versions.length}</dd>
-                    </div>
-                    <div className={pageStyles.overviewDlRow}>
-                      <dt>状态</dt>
-                      <dd>{toolStatusLabel(detailState.data.status)}</dd>
-                    </div>
-                    <div className={pageStyles.overviewDlRow}>
-                      <dt>分类</dt>
-                      <dd>{detailState.data.category}</dd>
-                    </div>
-                    <div className={pageStyles.overviewDlRow}>
-                      <dt>部门</dt>
-                      <dd>{detailState.data.department}</dd>
-                    </div>
-                    <div className={pageStyles.overviewDlRow}>
-                      <dt>最新版本</dt>
-                      <dd>{detailState.data.latest_version || "未设置"}</dd>
-                    </div>
-                  </dl>
-                </section>
-
-                <section
-                  className={`surface ${styles.panel} ${pageStyles.detailActivityPanel}`}
-                >
-                  <div className={pageStyles.detailActivityBlock}>
-                    <h3 className={pageStyles.detailActivityTitle}>使用提示</h3>
-                    <ul className={pageStyles.detailActivityList}>
-                      <li>工具主信息在左侧维护，版本文件在中间区域查看和管理。</li>
-                      <li>右侧操作区固定停靠，滚动长版本列表时不会错位。</li>
-                      <li>删除版本会真正删除数据库记录和已上传附件。</li>
-                    </ul>
-                  </div>
-                </section>
-
-                {canManage ? (
-                  <section
-                    className={`surface ${styles.panel} ${pageStyles.adminMaintainPanel}`}
-                  >
-                    <h3 className={pageStyles.asideCardTitle}>管理操作</h3>
-                    {feedback ? (
-                      <div className={pageStyles.adminFeedback}>{feedback}</div>
-                    ) : null}
-
-                    <div className={pageStyles.adminActionGroup}>
-                      <button
-                        className="buttonGhost"
-                        onClick={() => {
-                          setEditing((current) => !current);
-                          setAddingVersion(false);
-                          setFeedback(null);
-                        }}
-                        type="button"
-                      >
-                        {editing ? "收起编辑" : "编辑工具"}
-                      </button>
-                      <button
-                        className="buttonGhost"
-                        onClick={() => {
-                          setAddingVersion((current) => !current);
-                          setEditing(false);
-                          setFeedback(null);
-                        }}
-                        type="button"
-                      >
-                        {addingVersion ? "收起版本表单" : "新增版本"}
-                      </button>
-                      <button
-                        className="button"
-                        disabled={busy}
-                        onClick={() => void removeTool()}
-                        type="button"
-                      >
-                        删除工具
-                      </button>
-                    </div>
-
-                    {editing ? (
-                      <div className={`${pageStyles.uploadForm} ${pageStyles.asideForm}`}>
-                        <label className={styles.field}>
-                          <span className={styles.label}>名称</span>
-                          <input
-                            className={styles.input}
-                            onChange={(event) => setEditName(event.target.value)}
-                            value={editName}
-                          />
-                        </label>
-                        <label className={styles.field}>
-                          <span className={styles.label}>编码</span>
-                          <input
-                            className={styles.input}
-                            onChange={(event) => setEditCode(event.target.value)}
-                            value={editCode}
-                          />
-                        </label>
-                        <label className={styles.field}>
-                          <span className={styles.label}>分类</span>
-                          <input
-                            className={styles.input}
-                            onChange={(event) => setEditCategory(event.target.value)}
-                            value={editCategory}
-                          />
-                        </label>
-                        <label className={styles.field}>
-                          <span className={styles.label}>部门</span>
-                          <input
-                            className={styles.input}
-                            onChange={(event) => setEditDepartment(event.target.value)}
-                            value={editDepartment}
-                          />
-                        </label>
-                        <label className={styles.field}>
-                          <span className={styles.label}>摘要</span>
-                          <input
-                            className={styles.input}
-                            onChange={(event) => setEditSummary(event.target.value)}
-                            value={editSummary}
-                          />
-                        </label>
-                        <label className={styles.field}>
-                          <span className={styles.label}>详细说明</span>
-                          <textarea
-                            className={styles.input}
-                            onChange={(event) => setEditDetail(event.target.value)}
-                            rows={4}
-                            value={editDetail}
-                          />
-                        </label>
-                        <label className={styles.field}>
-                          <span className={styles.label}>状态</span>
-                          <select
-                            className={styles.select}
-                            onChange={(event) => setEditStatus(event.target.value)}
-                            value={editStatus}
-                          >
-                            <option value="active">可用</option>
-                            <option value="testing">测试中</option>
-                            <option value="deprecated">已归档</option>
-                          </select>
-                        </label>
-                        <label className={styles.field}>
-                          <span className={styles.label}>标签</span>
-                          <input
-                            className={styles.input}
-                            onChange={(event) => setEditTags(event.target.value)}
-                            value={editTags}
-                          />
-                        </label>
-                        <label className={styles.field}>
-                          <span className={styles.label}>图标 URL</span>
-                          <input
-                            className={styles.input}
-                            onChange={(event) => setEditIcon(event.target.value)}
-                            value={editIcon}
-                          />
-                        </label>
-
-                        <div className={styles.actions}>
-                          <button
-                            className="button"
-                            disabled={busy}
-                            onClick={() => void saveEdit()}
-                            type="button"
-                          >
-                            {busy ? "保存中…" : "保存修改"}
-                          </button>
-                          <button
-                            className="buttonGhost"
-                            onClick={() => setEditing(false)}
-                            type="button"
-                          >
-                            取消
-                          </button>
-                        </div>
-                      </div>
-                    ) : null}
-
-                    {addingVersion ? (
-                      <div className={`${pageStyles.uploadForm} ${pageStyles.asideForm}`}>
-                        <label className={styles.field}>
-                          <span className={styles.label}>版本号</span>
-                          <input
-                            className={styles.input}
-                            onChange={(event) => setVersionNumber(event.target.value)}
-                            placeholder="v1.1.0"
-                            value={versionNumber}
-                          />
-                        </label>
-                        <label className={styles.field}>
-                          <span className={styles.label}>发布说明</span>
-                          <textarea
-                            className={styles.input}
-                            onChange={(event) => setVersionNotes(event.target.value)}
-                            rows={2}
-                            value={versionNotes}
-                          />
-                        </label>
-                        <label className={styles.field}>
-                          <span className={styles.label}>变更记录</span>
-                          <textarea
-                            className={styles.input}
-                            onChange={(event) => setVersionChangelog(event.target.value)}
-                            rows={3}
-                            value={versionChangelog}
-                          />
-                        </label>
-                        <label className={styles.field}>
-                          <span className={styles.label}>附件</span>
-                          <input
-                            className={styles.input}
-                            onChange={(event) =>
-                              setVersionFile(event.target.files?.[0] ?? null)
-                            }
-                            type="file"
-                          />
-                        </label>
-                        {versionFile ? (
-                          <div className={pageStyles.uploadHint}>
-                            <div>
-                              {versionFile.name} ({(versionFile.size / 1024 / 1024).toFixed(2)} MB)
-                            </div>
-                            <div>
-                              {uploadState.status} · {uploadState.uploadedChunks}/
-                              {uploadState.totalChunks || 0}
-                            </div>
-                            <div className={pageStyles.progressBar}>
-                              <span style={{ width: `${uploadState.progress}%` }} />
-                            </div>
-                            <div>{uploadState.progress.toFixed(1)}%</div>
-                          </div>
-                        ) : null}
-
-                        <div className={styles.actions}>
-                          <button
-                            className="button"
-                            disabled={busy}
-                            onClick={() => void addVersion()}
-                            type="button"
-                          >
-                            {busy ? "提交中…" : "提交版本"}
-                          </button>
-                          <button
-                            className="buttonGhost"
-                            onClick={() => setAddingVersion(false)}
-                            type="button"
-                          >
-                            取消
-                          </button>
-                        </div>
-                      </div>
-                    ) : null}
-                  </section>
-                ) : null}
+          {status === "ready" && data ? (
+            <div className={styles.layout}>
+              <aside className={styles.sidebar}>
+                <ToolInfoCard
+                  currentVersion={data.current_version}
+                  tool={data.tool}
+                />
               </aside>
+
+              <main className={styles.main}>
+                <ToolActions
+                  activePanel={activePanel}
+                  busy={busy}
+                  canManage={canManage}
+                  feedback={feedback}
+                  onDeleteTool={handleDeleteTool}
+                  onOpenEdit={() => openPanel("edit")}
+                  onOpenUpload={() => openPanel("upload")}
+                  refreshing={refreshing}
+                  versionsCount={data.versions.length}
+                />
+
+                {canManage && activePanel === "upload" ? (
+                  <UploadPanel
+                    busy={busy}
+                    onCancel={closePanel}
+                    onChangelogChange={(value) => updateVersionField("changelog", value)}
+                    onFileChange={(value) => updateVersionField("file", value)}
+                    onReleaseNotesChange={(value) =>
+                      updateVersionField("release_notes", value)
+                    }
+                    onSubmit={submitVersion}
+                    onVersionChange={(value) => updateVersionField("version", value)}
+                    uploadState={uploadState}
+                    versionForm={versionForm}
+                  />
+                ) : null}
+
+                {canManage && activePanel === "edit" && editForm ? (
+                  <EditPanel
+                    busy={busy}
+                    form={editForm}
+                    onCancel={closePanel}
+                    onChange={updateEditField}
+                    onSubmit={submitEdit}
+                  />
+                ) : null}
+
+                <VersionList
+                  busyAction={busyAction}
+                  canManage={canManage}
+                  onDelete={handleDeleteVersion}
+                  onSetCurrent={handleSetCurrent}
+                  versions={data.versions}
+                />
+              </main>
             </div>
           ) : null}
         </div>
-      </section>
+      </div>
     </DepartmentAccessGuard>
   );
 }

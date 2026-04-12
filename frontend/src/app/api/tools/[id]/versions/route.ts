@@ -3,6 +3,14 @@ import { normalizeForwardedContentType } from "@/lib/content-type";
 
 const BIND_UPLOAD_TIMEOUT_MS = 10 * 60 * 1000;
 
+export async function GET(
+  _request: Request,
+  context: { params: Promise<{ id: string }> },
+) {
+  const { id } = await context.params;
+  return proxyProtectedJson(`/api/v1/tools/${id}/versions/`);
+}
+
 export async function POST(
   request: Request,
   context: { params: Promise<{ id: string }> },

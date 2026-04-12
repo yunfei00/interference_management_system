@@ -31,6 +31,7 @@ def normalize_tags(raw_value) -> str:
 
 
 class ToolVersionSerializer(serializers.ModelSerializer):
+    is_current = serializers.BooleanField(source="is_latest", read_only=True)
     created_by_username = serializers.CharField(
         source="created_by.username",
         read_only=True,
@@ -49,6 +50,7 @@ class ToolVersionSerializer(serializers.ModelSerializer):
             "file_name",
             "file_size",
             "checksum",
+            "is_current",
             "is_latest",
             "created_at",
             "created_by",

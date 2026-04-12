@@ -135,6 +135,7 @@ export type ToolVersionRow = {
   file_name: string;
   file_size: number;
   checksum: string;
+  is_current?: boolean;
   is_latest: boolean;
   created_at: string;
   created_by: number | null;

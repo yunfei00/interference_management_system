@@ -14,7 +14,7 @@ from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from apps.common.api import BaselineModelViewSet
+from apps.common.api import BaselineGenericViewSet, BaselineModelViewSet
 from apps.common.api_contract import build_api_envelope
 from apps.common.permissions import MappedPermission
 
@@ -51,6 +51,12 @@ def delete_version_file(version: ToolVersion) -> None:
 class ToolViewSet(BaselineModelViewSet):
     permission_classes = [IsAuthenticated, MappedPermission]
     permission_map = {
+        "get": ["department.interference.view", "interference.tools.view"],
+        "post": [
+            "department.interference.view",
+            "interference.tools.view",
+            "tools.manage",
+        ],
         "list": ["department.interference.view", "interference.tools.view"],
         "retrieve": ["department.interference.view", "interference.tools.view"],
         "download": ["department.interference.view", "interference.tools.view"],
@@ -71,11 +77,6 @@ class ToolViewSet(BaselineModelViewSet):
             "tools.manage",
         ],
         "destroy": [
-            "department.interference.view",
-            "interference.tools.view",
-            "tools.manage",
-        ],
-        "add_version": [
             "department.interference.view",
             "interference.tools.view",
             "tools.manage",
@@ -160,12 +161,22 @@ class ToolViewSet(BaselineModelViewSet):
     @extend_schema(tags=["Tools"])
     @action(
         detail=True,
-        methods=["post"],
+        methods=["get", "post"],
         url_path="versions",
         parser_classes=[MultiPartParser, FormParser],
     )
     def add_version(self, request, pk=None):
         tool = self.get_object()
+        if request.method.lower() == "get":
+            versions = tool.versions.order_by("-created_at", "-id")
+            return self.success_response(
+                data=ToolVersionSerializer(
+                    versions,
+                    many=True,
+                    context={"request": request},
+                ).data
+            )
+
         logger.info(
             "tool version add request tool_id=%s bind_content_type=%s",
             tool.id,
@@ -438,4 +449,49 @@ class ToolViewSet(BaselineModelViewSet):
             data=progress,
             code="merged",
             message="Upload merged successfully.",
+        )
+
+
+@extend_schema(tags=["Tools"])
+class ToolVersionViewSet(BaselineGenericViewSet):
+    permission_classes = [IsAuthenticated, MappedPermission]
+    permission_map = {
+        "destroy": [
+            "department.interference.view",
+            "interference.tools.view",
+            "tools.manage",
+        ],
+        "set_current": [
+            "department.interference.view",
+            "interference.tools.view",
+            "tools.manage",
+        ],
+    }
+    queryset = ToolVersion.objects.select_related("tool", "created_by").all()
+    serializer_class = ToolVersionSerializer
+    http_method_names = ["delete", "post", "head", "options"]
+
+    def perform_destroy(self, instance):
+        tool_id = instance.tool_id
+        delete_version_file(instance)
+        instance.delete()
+        sync_tool_latest(tool_id)
+
+    @extend_schema(tags=["Tools"])
+    @action(detail=True, methods=["post"], url_path="set_current")
+    def set_current(self, request, pk=None):
+        version = self.get_object()
+        tool = version.tool
+        max_created_at = tool.versions.aggregate(max_created_at=Max("created_at"))[
+            "max_created_at"
+        ]
+        base_created_at = max_created_at or version.created_at
+        version.created_at = base_created_at + timedelta(microseconds=1)
+        version.save(update_fields=["created_at"])
+        sync_tool_latest(tool.id)
+        version.refresh_from_db()
+        return self.success_response(
+            data=ToolVersionSerializer(version, context={"request": request}).data,
+            code="updated",
+            message="Version promoted successfully.",
         )

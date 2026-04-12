@@ -8,7 +8,7 @@ function formatDate(value: string) {
 
 function formatFileSize(size: number) {
   if (!size) {
-    return "No file";
+    return "无文件";
   }
 
   if (size >= 1024 * 1024 * 1024) {
@@ -45,33 +45,33 @@ export function VersionRow({
         <div className={styles.versionTitle}>
           <span className={styles.versionCode}>{row.version}</span>
           {row.is_current ? (
-            <span className={styles.currentRowBadge}>Current</span>
+            <span className={styles.currentRowBadge}>当前</span>
           ) : null}
         </div>
       </div>
 
       <div className={styles.metaCell}>
-        <span className={styles.metaLabelMobile}>Published</span>
+        <span className={styles.metaLabelMobile}>发布时间</span>
         <span className={styles.metaValueRow}>{formatDate(row.created_at)}</span>
       </div>
 
       <div className={styles.metaCell}>
-        <span className={styles.metaLabelMobile}>Size</span>
+        <span className={styles.metaLabelMobile}>大小</span>
         <span className={styles.metaValueRow}>{formatFileSize(row.file_size)}</span>
       </div>
 
       <div className={styles.metaCell}>
-        <span className={styles.metaLabelMobile}>Publisher</span>
-        <span className={styles.metaValueRow}>{row.created_by_name || "Unknown"}</span>
+        <span className={styles.metaLabelMobile}>发布人</span>
+        <span className={styles.metaValueRow}>{row.created_by_name || "未知"}</span>
       </div>
 
       <div className={styles.rowActions}>
         {row.download_url ? (
           <a className={styles.downloadLink} href={row.download_url}>
-            Download
+            下载
           </a>
         ) : (
-          <span className={styles.downloadLinkDisabled}>No file</span>
+          <span className={styles.downloadLinkDisabled}>无文件</span>
         )}
 
         {canManage && !row.is_current ? (
@@ -81,7 +81,7 @@ export function VersionRow({
             onClick={() => onSetCurrent(row)}
             type="button"
           >
-            Set Current
+            设为当前
           </button>
         ) : null}
 
@@ -92,7 +92,7 @@ export function VersionRow({
             onClick={() => onDelete(row)}
             type="button"
           >
-            Delete
+            删除
           </button>
         ) : null}
       </div>

@@ -41,7 +41,7 @@ function toErrorMessage(error: unknown) {
   if (error instanceof Error && error.message.trim()) {
     return error.message;
   }
-  return "Operation failed. Please try again.";
+  return "操作失败，请稍后重试。";
 }
 
 function buildEditForm(tool: ToolSummaryModel): ToolUpdateInput {
@@ -216,7 +216,7 @@ export function useToolDetailController(args: {
       await updateTool(toolId, editForm);
       await refresh();
       setActivePanel(null);
-      setFeedback({ tone: "success", message: "Tool details updated." });
+      setFeedback({ tone: "success", message: "工具信息已更新。" });
     } catch (error) {
       setFeedback({ tone: "error", message: toErrorMessage(error) });
     } finally {
@@ -226,12 +226,12 @@ export function useToolDetailController(args: {
 
   async function submitVersion() {
     if (!versionForm.version.trim()) {
-      setFeedback({ tone: "error", message: "Version number is required." });
+      setFeedback({ tone: "error", message: "请填写版本号。" });
       return;
     }
 
     if (!versionForm.file) {
-      setFeedback({ tone: "error", message: "Please choose a package file to upload." });
+      setFeedback({ tone: "error", message: "请选择要上传的安装包文件。" });
       return;
     }
 
@@ -250,7 +250,7 @@ export function useToolDetailController(args: {
       setVersionForm(emptyVersionForm());
       setUploadState(EMPTY_UPLOAD_STATE);
       setActivePanel(null);
-      setFeedback({ tone: "success", message: "New version uploaded successfully." });
+      setFeedback({ tone: "success", message: "新版本已成功上传。" });
     } catch (error) {
       setFeedback({ tone: "error", message: toErrorMessage(error) });
     } finally {
@@ -264,7 +264,7 @@ export function useToolDetailController(args: {
     }
 
     const confirmed = window.confirm(
-      `Delete tool "${pageData.tool.name}" and all versions?`,
+      `确定要删除工具「${pageData.tool.name}」及其全部版本吗？`,
     );
     if (!confirmed) {
       return;
@@ -284,7 +284,7 @@ export function useToolDetailController(args: {
   }
 
   async function handleDeleteVersion(version: ToolVersionModel) {
-    const confirmed = window.confirm(`Delete version ${version.version}?`);
+    const confirmed = window.confirm(`确定要删除版本 ${version.version} 吗？`);
     if (!confirmed) {
       return;
     }
@@ -295,7 +295,7 @@ export function useToolDetailController(args: {
     try {
       await deleteVersion(version.id);
       await refresh();
-      setFeedback({ tone: "success", message: `${version.version} deleted.` });
+      setFeedback({ tone: "success", message: `已删除版本 ${version.version}。` });
     } catch (error) {
       setFeedback({ tone: "error", message: toErrorMessage(error) });
     } finally {
@@ -310,7 +310,7 @@ export function useToolDetailController(args: {
     try {
       await setCurrentVersion(version.id);
       await refresh();
-      setFeedback({ tone: "success", message: `${version.version} is now current.` });
+      setFeedback({ tone: "success", message: `已将 ${version.version} 设为当前版本。` });
     } catch (error) {
       setFeedback({ tone: "error", message: toErrorMessage(error) });
     } finally {

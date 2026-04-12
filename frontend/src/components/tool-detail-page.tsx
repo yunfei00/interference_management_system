@@ -3,6 +3,7 @@
 import { hasDashboardPermission } from "@/lib/dashboard-navigation";
 import type { UploadState } from "@/lib/tool-upload";
 import { TOOLS_MANAGE_ACCESS, TOOLS_VIEW_ACCESS } from "@/lib/tool-permissions";
+import { uploadProgressStatusLabel } from "@/lib/upload-ui-labels";
 import { useToolDetailController } from "@/lib/use-tool-detail-controller";
 
 import { DepartmentAccessGuard } from "./department-access-guard";
@@ -15,23 +16,6 @@ import styles from "./tool-detail.module.css";
 type ToolDetailPageProps = {
   toolId: string;
 };
-
-function uploadStatusLabel(status: UploadState["status"]) {
-  switch (status) {
-    case "preparing":
-      return "Preparing upload...";
-    case "uploading":
-      return "Uploading chunks...";
-    case "merging":
-      return "Merging uploaded file...";
-    case "completed":
-      return "Upload completed.";
-    case "failed":
-      return "Upload failed.";
-    default:
-      return "Waiting for upload.";
-  }
-}
 
 function UploadPanel(props: {
   busy: boolean;
@@ -66,16 +50,15 @@ function UploadPanel(props: {
   return (
     <section className={`${styles.surface} ${styles.panel}`}>
       <div className={styles.panelHeader}>
-        <div className={styles.panelTitle}>Upload New Version</div>
+        <div className={styles.panelTitle}>上传新版本</div>
         <div className={styles.panelDescription}>
-          Complete the version metadata first, then upload the package in one guided
-          flow.
+          先填写版本元数据，再按引导完成安装包上传与绑定。
         </div>
       </div>
 
       <div className={`${styles.formGrid} ${styles.formGridTwo}`}>
         <label className={styles.field}>
-          <span className={styles.fieldLabel}>Version</span>
+          <span className={styles.fieldLabel}>版本号</span>
           <input
             className={styles.input}
             disabled={busy}
@@ -87,7 +70,7 @@ function UploadPanel(props: {
         </label>
 
         <label className={styles.field}>
-          <span className={styles.fieldLabel}>Package File</span>
+          <span className={styles.fieldLabel}>安装包文件</span>
           <input
             className={styles.fileInput}
             disabled={busy}
@@ -95,30 +78,30 @@ function UploadPanel(props: {
             type="file"
           />
           <span className={styles.mutedText}>
-            {versionForm.file ? versionForm.file.name : "No file selected."}
+            {versionForm.file ? versionForm.file.name : "未选择文件。"}
           </span>
         </label>
       </div>
 
       <div className={styles.formGrid}>
         <label className={styles.field}>
-          <span className={styles.fieldLabel}>Release Notes</span>
+          <span className={styles.fieldLabel}>发布说明</span>
           <textarea
             className={styles.textarea}
             disabled={busy}
             onChange={(event) => onReleaseNotesChange(event.target.value)}
-            placeholder="Describe the goal of this release."
+            placeholder="简要说明本版本目标与适用场景。"
             value={versionForm.release_notes}
           />
         </label>
 
         <label className={styles.field}>
-          <span className={styles.fieldLabel}>Change Log</span>
+          <span className={styles.fieldLabel}>变更记录</span>
           <textarea
             className={styles.textarea}
             disabled={busy}
             onChange={(event) => onChangelogChange(event.target.value)}
-            placeholder="List the important changes in this version."
+            placeholder="列出本版本的重要变更。"
             value={versionForm.changelog}
           />
         </label>
@@ -127,9 +110,9 @@ function UploadPanel(props: {
       {shouldShowProgress ? (
         <div className={styles.progressCard}>
           <div className={styles.progressMeta}>
-            <span>{uploadStatusLabel(uploadState.status)}</span>
+            <span>{uploadProgressStatusLabel(uploadState.status)}</span>
             <span>
-              {uploadState.uploadedChunks}/{uploadState.totalChunks || 0} chunks
+              分片 {uploadState.uploadedChunks}/{uploadState.totalChunks || 0}
             </span>
             <span>{Math.round(uploadState.progress)}%</span>
             {uploadState.error ? <span>{uploadState.error}</span> : null}
@@ -145,10 +128,10 @@ function UploadPanel(props: {
 
       <div className={styles.panelActions}>
         <button className={styles.buttonGhost} disabled={busy} onClick={onCancel} type="button">
-          Cancel
+          取消
         </button>
         <button className={styles.button} disabled={busy} onClick={onSubmit} type="button">
-          {busy ? "Uploading..." : "Upload Version"}
+          {busy ? "上传中…" : "上传版本"}
         </button>
       </div>
     </section>
@@ -189,15 +172,15 @@ function EditPanel(props: {
   return (
     <section className={`${styles.surface} ${styles.panel}`}>
       <div className={styles.panelHeader}>
-        <div className={styles.panelTitle}>Edit Tool</div>
+        <div className={styles.panelTitle}>编辑工具</div>
         <div className={styles.panelDescription}>
-          Maintain tool metadata from one focused panel instead of scattered actions.
+          在此集中维护工具元数据，避免分散操作。
         </div>
       </div>
 
       <div className={`${styles.formGrid} ${styles.formGridTwo}`}>
         <label className={styles.field}>
-          <span className={styles.fieldLabel}>Name</span>
+          <span className={styles.fieldLabel}>名称</span>
           <input
             className={styles.input}
             disabled={busy}
@@ -207,7 +190,7 @@ function EditPanel(props: {
         </label>
 
         <label className={styles.field}>
-          <span className={styles.fieldLabel}>Code</span>
+          <span className={styles.fieldLabel}>编码</span>
           <input
             className={styles.input}
             disabled={busy}
@@ -217,7 +200,7 @@ function EditPanel(props: {
         </label>
 
         <label className={styles.field}>
-          <span className={styles.fieldLabel}>Category</span>
+          <span className={styles.fieldLabel}>分类</span>
           <input
             className={styles.input}
             disabled={busy}
@@ -227,7 +210,7 @@ function EditPanel(props: {
         </label>
 
         <label className={styles.field}>
-          <span className={styles.fieldLabel}>Department</span>
+          <span className={styles.fieldLabel}>所属部门</span>
           <input
             className={styles.input}
             disabled={busy}
@@ -237,21 +220,21 @@ function EditPanel(props: {
         </label>
 
         <label className={styles.field}>
-          <span className={styles.fieldLabel}>Status</span>
+          <span className={styles.fieldLabel}>状态</span>
           <select
             className={styles.select}
             disabled={busy}
             onChange={(event) => onChange("status", event.target.value)}
             value={form.status}
           >
-            <option value="active">Available</option>
-            <option value="testing">Testing</option>
-            <option value="deprecated">Deprecated</option>
+            <option value="active">可用</option>
+            <option value="testing">测试中</option>
+            <option value="deprecated">已归档</option>
           </select>
         </label>
 
         <label className={styles.field}>
-          <span className={styles.fieldLabel}>Icon</span>
+          <span className={styles.fieldLabel}>图标 URL</span>
           <input
             className={styles.input}
             disabled={busy}
@@ -261,7 +244,7 @@ function EditPanel(props: {
         </label>
 
         <label className={styles.field}>
-          <span className={styles.fieldLabel}>Tags</span>
+          <span className={styles.fieldLabel}>标签</span>
           <input
             className={styles.input}
             disabled={busy}
@@ -274,7 +257,7 @@ function EditPanel(props: {
 
       <div className={styles.formGrid}>
         <label className={styles.field}>
-          <span className={styles.fieldLabel}>Summary</span>
+          <span className={styles.fieldLabel}>摘要</span>
           <textarea
             className={styles.textarea}
             disabled={busy}
@@ -284,7 +267,7 @@ function EditPanel(props: {
         </label>
 
         <label className={styles.field}>
-          <span className={styles.fieldLabel}>Detail</span>
+          <span className={styles.fieldLabel}>详细说明</span>
           <textarea
             className={styles.textarea}
             disabled={busy}
@@ -296,10 +279,10 @@ function EditPanel(props: {
 
       <div className={styles.panelActions}>
         <button className={styles.buttonGhost} disabled={busy} onClick={onCancel} type="button">
-          Cancel
+          取消
         </button>
         <button className={styles.button} disabled={busy} onClick={onSubmit} type="button">
-          {busy ? "Saving..." : "Save Changes"}
+          {busy ? "保存中…" : "保存更改"}
         </button>
       </div>
     </section>
@@ -356,12 +339,12 @@ function ErrorState(props: { message: string; busy: boolean; onRetry: () => void
   return (
     <section className={`${styles.surface} ${styles.panel}`}>
       <div className={styles.panelHeader}>
-        <div className={styles.panelTitle}>Unable To Load Tool Detail</div>
+        <div className={styles.panelTitle}>无法加载工具详情</div>
         <div className={styles.panelDescription}>{message}</div>
       </div>
       <div className={styles.panelActions}>
         <button className={styles.buttonSecondary} disabled={busy} onClick={onRetry} type="button">
-          Retry
+          重试
         </button>
       </div>
     </section>
@@ -406,9 +389,9 @@ export function ToolDetailPage({ toolId }: ToolDetailPageProps) {
 
   return (
     <DepartmentAccessGuard
-      description="View tool metadata, version history, and release operations in one page."
+      description="在此查看工具元数据、版本历史，并在有权限时进行发布与维护操作。"
       requiredPermissions={[...TOOLS_VIEW_ACCESS]}
-      title="Tool Detail"
+      title="工具详情"
     >
       <div className={styles.page}>
         <div className={styles.shell}>
@@ -417,7 +400,7 @@ export function ToolDetailPage({ toolId }: ToolDetailPageProps) {
           {status === "error" ? (
             <ErrorState
               busy={refreshing}
-              message={errorMessage || "Unknown error"}
+              message={errorMessage || "未知错误"}
               onRetry={refresh}
             />
           ) : null}

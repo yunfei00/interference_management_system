@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import type { ApiEnvelope, ToolDetailPayload } from "@/lib/contracts";
 import { apiFetch } from "@/lib/api-client";
 import { runChunkedUpload, type UploadState } from "@/lib/tool-upload";
+import { uploadProgressStatusLabel } from "@/lib/upload-ui-labels";
 import { TOOLS_MANAGE_ACCESS } from "@/lib/tool-permissions";
 
 import { DepartmentAccessGuard } from "./department-access-guard";
@@ -225,7 +226,8 @@ export function ToolUploadPage() {
                       {file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)
                     </div>
                     <div>
-                      {uploadState.status} · {uploadState.uploadedChunks}/{uploadState.totalChunks || 0}
+                      {uploadProgressStatusLabel(uploadState.status)} 分片{" "}
+                      {uploadState.uploadedChunks}/{uploadState.totalChunks || 0}
                     </div>
                     <div className={pageStyles.progressBar}>
                       <span style={{ width: `${uploadState.progress}%` }} />

@@ -21,19 +21,18 @@ export function VersionList({
   return (
     <section className={`${styles.surface} ${styles.listSurface}`}>
       <div className={styles.listHeader}>
-        <div className={styles.listTitle}>Version List</div>
+        <div className={styles.listTitle}>版本列表</div>
         <div className={styles.listDescription}>
-          The current version stays highlighted, and all row actions are aligned on
-          the right side for fast scanning.
+          当前版本会高亮显示；操作按钮统一在右侧，便于快速浏览与操作。
         </div>
       </div>
 
       <div className={styles.columnHeader}>
-        <span>Version</span>
-        <span>Published</span>
-        <span>Size</span>
-        <span>Publisher</span>
-        <span>Actions</span>
+        <span>版本</span>
+        <span>发布时间</span>
+        <span>大小</span>
+        <span>发布人</span>
+        <span>操作</span>
       </div>
 
       <div className={styles.listBody}>
@@ -50,7 +49,7 @@ export function VersionList({
           ))
         ) : (
           <div className={styles.emptyState}>
-            No versions yet. Upload the first package to start version management.
+            尚无版本。请上传首个安装包以开始版本管理。
           </div>
         )}
       </div>

@@ -32,18 +32,18 @@ export function ToolActions({
     <>
       <section className={`${styles.surface} ${styles.actionBar}`}>
         <div className={styles.actionHeader}>
-          <div className={styles.actionTitle}>Version Management</div>
+          <div className={styles.actionTitle}>版本管理</div>
           <div className={styles.actionMeta}>
             {refreshing
-              ? "Refreshing latest data..."
-              : `${versionsCount} version records`}
+              ? "正在刷新数据…"
+              : `共 ${versionsCount} 条版本记录`}
           </div>
         </div>
 
         {canManage ? (
           <div className={styles.actionButtons}>
             <button className={styles.button} disabled={busy} onClick={onOpenUpload} type="button">
-              {activePanel === "upload" ? "Close Upload" : "Upload New Version"}
+              {activePanel === "upload" ? "关闭上传" : "上传新版本"}
             </button>
             <button
               className={styles.buttonSecondary}
@@ -51,7 +51,7 @@ export function ToolActions({
               onClick={onOpenEdit}
               type="button"
             >
-              {activePanel === "edit" ? "Close Editor" : "Edit Tool"}
+              {activePanel === "edit" ? "关闭编辑" : "编辑工具"}
             </button>
             <button
               className={styles.buttonDanger}
@@ -59,7 +59,7 @@ export function ToolActions({
               onClick={onDeleteTool}
               type="button"
             >
-              Delete Tool
+              删除工具
             </button>
           </div>
         ) : null}

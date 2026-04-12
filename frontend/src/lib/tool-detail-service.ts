@@ -86,8 +86,22 @@ function splitTags(tags: string | null | undefined): string[] {
     .filter(Boolean);
 }
 
+/**
+ * 后端序列化返回 Django 直连路径 `/api/v1/tools/{id}/versions/{vid}/download/`；
+ * 浏览器需走 Next BFF（同域 `/api/tools/...`），否则会命中 Next 不存在的路由而 404。
+ */
+function toBrowserToolVersionDownloadPath(raw: string): string {
+  const trimmed = raw.trim().replace(/\/+$/, "");
+  const match = /^\/api\/v1\/tools\/(\d+)\/versions\/(\d+)\/download$/.exec(trimmed);
+  if (match) {
+    return `/api/tools/${match[1]}/versions/${match[2]}/download`;
+  }
+  return raw;
+}
+
 function normalizeVersion(version: ToolVersionRow): ToolVersionModel {
-  const download_path = version.download_path || "";
+  const rawPath = (version.download_path || "").trim();
+  const download_path = rawPath ? toBrowserToolVersionDownloadPath(rawPath) : "";
   return {
     id: version.id,
     version: version.version,

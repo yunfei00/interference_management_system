@@ -11,7 +11,12 @@ import type {
   ToolVersionBindUploadPayload,
   ToolVersionRow,
 } from "@/lib/contracts";
-import { apiFetch, apiUrl } from "@/lib/api-client";
+import {
+  ApiResponseError,
+  apiFetch,
+  apiUrl,
+  parseApiResponse,
+} from "@/lib/api-client";
 import { hasDashboardPermission } from "@/lib/dashboard-navigation";
 import { runChunkedUpload, type UploadState } from "@/lib/tool-upload";
 import { normalizeToolStatus, toolStatusLabel } from "@/lib/tool-status";
@@ -24,6 +29,43 @@ import styles from "./management-page.module.css";
 import pageStyles from "./tools-pages.module.css";
 
 const listHref = "/dashboard/electromagnetic/interference/tools" as Route;
+const BIND_UPLOAD_RECOVERY_TIMEOUT_MS = 30 * 1000;
+const BIND_UPLOAD_RECOVERY_INTERVAL_MS = 1500;
+
+function sleep(ms: number) {
+  return new Promise<void>((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+}
+
+function isBackendTimeoutError(error: unknown) {
+  if (error instanceof ApiResponseError) {
+    return error.status === 504 || error.code === "backend_timeout";
+  }
+
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  const normalized = `${error.name} ${error.message}`.toLowerCase();
+  return (
+    normalized.includes("timeout") ||
+    normalized.includes("timed out") ||
+    normalized.includes("aborted")
+  );
+}
+
+function hasNewlyBoundVersion(
+  detail: ToolDetailPayload,
+  expectedVersion: string,
+  existingVersionIds: Set<number>,
+) {
+  const normalizedVersion = expectedVersion.trim();
+  return detail.versions.some(
+    (row) =>
+      row.version.trim() === normalizedVersion && !existingVersionIds.has(row.id),
+  );
+}
 
 function statusClass(status: string) {
   switch (normalizeToolStatus(status)) {
@@ -266,6 +308,35 @@ export function ToolDetailPage({ toolId }: ToolDetailPageProps) {
     setEditTags(detailState.data.tags);
   }, [detailState, editing]);
 
+  async function fetchLatestDetail() {
+    const response = await apiFetch(`/api/tools/${toolId}`);
+    return parseApiResponse<ToolDetailPayload>(response);
+  }
+
+  async function waitForBoundVersion(
+    expectedVersion: string,
+    existingVersionIds: Set<number>,
+  ) {
+    const deadline = Date.now() + BIND_UPLOAD_RECOVERY_TIMEOUT_MS;
+
+    while (true) {
+      try {
+        const detail = await fetchLatestDetail();
+        if (hasNewlyBoundVersion(detail, expectedVersion, existingVersionIds)) {
+          return true;
+        }
+      } catch {
+        // Ignore transient polling failures and keep checking until the deadline.
+      }
+
+      if (Date.now() >= deadline) {
+        return false;
+      }
+
+      await sleep(BIND_UPLOAD_RECOVERY_INTERVAL_MS);
+    }
+  }
+
   async function saveEdit() {
     setBusy(true);
     setFeedback(null);
@@ -343,6 +414,7 @@ export function ToolDetailPage({ toolId }: ToolDetailPageProps) {
         upload_id: uploadId,
       };
       if (uploadId) {
+        const existingVersionIds = new Set(versions.map((row) => row.id));
         const bindRequestKey = `${toolId}:${values.version}:${uploadId}`;
         if (bindRequestKeyRef.current === bindRequestKey) {
           throw new Error("当前版本绑定请求仍在处理中，请稍候。");
@@ -354,10 +426,18 @@ export function ToolDetailPage({ toolId }: ToolDetailPageProps) {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(values),
           });
-          await parseApiData<ToolVersionRow>(response);
+          await parseApiResponse<ToolVersionRow>(response);
         } catch (error) {
-          bindRequestKeyRef.current = null;
-          throw error;
+          const recovered =
+            isBackendTimeoutError(error) &&
+            (await waitForBoundVersion(values.version, existingVersionIds));
+          if (!recovered) {
+            throw error;
+          }
+        } finally {
+          if (bindRequestKeyRef.current === bindRequestKey) {
+            bindRequestKeyRef.current = null;
+          }
         }
       } else {
         const formData = new FormData();

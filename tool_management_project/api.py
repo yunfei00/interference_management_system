@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from datetime import timedelta
 from pathlib import Path
 
@@ -26,6 +27,7 @@ from .serializers import (
     ToolUploadSessionSerializer,
     ToolListSerializer,
     ToolUpdateSerializer,
+    ToolVersionBindUploadSerializer,
     ToolVersionCreateSerializer,
     ToolVersionSerializer,
 )
@@ -36,6 +38,8 @@ from .services import (
     save_upload_chunk,
     sync_tool_latest,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def delete_version_file(version: ToolVersion) -> None:
@@ -82,6 +86,11 @@ class ToolViewSet(BaselineModelViewSet):
             "tools.manage",
         ],
         "set_version_latest": [
+            "department.interference.view",
+            "interference.tools.view",
+            "tools.manage",
+        ],
+        "bind_upload": [
             "department.interference.view",
             "interference.tools.view",
             "tools.manage",
@@ -157,6 +166,11 @@ class ToolViewSet(BaselineModelViewSet):
     )
     def add_version(self, request, pk=None):
         tool = self.get_object()
+        logger.info(
+            "tool version add request tool_id=%s bind_content_type=%s",
+            tool.id,
+            request.content_type,
+        )
         serializer = ToolVersionCreateSerializer(
             data=request.data,
             context={"request": request, "tool": tool},
@@ -168,6 +182,54 @@ class ToolViewSet(BaselineModelViewSet):
             code="created",
             message="Version created successfully.",
             status_code=status.HTTP_201_CREATED,
+        )
+
+    @extend_schema(tags=["Tools"])
+    @action(
+        detail=True,
+        methods=["post"],
+        url_path="versions/bind-upload",
+        parser_classes=[JSONParser],
+    )
+    def bind_upload(self, request, pk=None):
+        tool = self.get_object()
+        serializer = ToolVersionBindUploadSerializer(
+            data=request.data,
+            context={"request": request, "tool": tool},
+        )
+        serializer.is_valid(raise_exception=True)
+        upload_id = serializer.validated_data.get("upload_id", "")
+        logger.info(
+            "tool version bind request tool_id=%s upload_id=%s bind_content_type=%s",
+            tool.id,
+            upload_id,
+            request.content_type,
+        )
+        row = serializer.save()
+        upload = ToolUploadSession.objects.filter(
+            upload_id=upload_id,
+            user=request.user,
+        ).first()
+        progress = build_upload_progress(upload) if upload else None
+        logger.info(
+            "tool version bind finished tool_id=%s upload_id=%s total_chunks=%s confirmed_chunk_count=%s missing_chunks=%s bind_content_type=%s",
+            tool.id,
+            upload_id,
+            progress["total_chunks"] if progress else None,
+            progress["uploaded_chunks_count"] if progress else None,
+            progress["missing_chunks"] if progress else None,
+            request.content_type,
+        )
+        created = getattr(serializer, "was_created", True)
+        return self.success_response(
+            data=ToolVersionSerializer(row, context={"request": request}).data,
+            code="created" if created else "ok",
+            message=(
+                "Version created successfully."
+                if created
+                else "Upload already bound to this version."
+            ),
+            status_code=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
         )
 
     @extend_schema(tags=["Tools"])
@@ -295,7 +357,7 @@ class ToolViewSet(BaselineModelViewSet):
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
         try:
-            save_upload_chunk(upload, int(chunk_index), chunk_file)
+            upload = save_upload_chunk(upload, int(chunk_index), chunk_file)
         except ValueError as exc:
             return self.success_response(
                 data=None,
@@ -304,7 +366,17 @@ class ToolViewSet(BaselineModelViewSet):
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
         upload.refresh_from_db()
-        return self.success_response(data=build_upload_progress(upload), message="Chunk uploaded.")
+        progress = build_upload_progress(upload)
+        logger.info(
+            "tool upload chunk response upload_id=%s chunk_index=%s total_chunks=%s confirmed_chunk_count=%s missing_chunks=%s complete_called=%s",
+            upload.upload_id,
+            int(chunk_index),
+            progress["total_chunks"],
+            progress["uploaded_chunks_count"],
+            progress["missing_chunks"],
+            False,
+        )
+        return self.success_response(data=progress, message="Chunk uploaded.")
 
     @extend_schema(tags=["Tools"])
     @action(
@@ -324,18 +396,46 @@ class ToolViewSet(BaselineModelViewSet):
     )
     def upload_merge(self, request, upload_id=None):
         upload = self._get_upload(request, upload_id)
+        before_progress = build_upload_progress(upload)
+        logger.info(
+            "tool upload merge request upload_id=%s total_chunks=%s confirmed_chunk_count=%s missing_chunks=%s complete_called=%s",
+            upload.upload_id,
+            before_progress["total_chunks"],
+            before_progress["uploaded_chunks_count"],
+            before_progress["missing_chunks"],
+            True,
+        )
         try:
             merge_upload_chunks(upload)
         except ValueError as exc:
+            upload.refresh_from_db()
+            failed_progress = build_upload_progress(upload)
+            logger.warning(
+                "tool upload merge failed upload_id=%s total_chunks=%s confirmed_chunk_count=%s missing_chunks=%s complete_called=%s",
+                upload.upload_id,
+                failed_progress["total_chunks"],
+                failed_progress["uploaded_chunks_count"],
+                failed_progress["missing_chunks"],
+                True,
+            )
             return self.success_response(
-                data=build_upload_progress(upload),
+                data=failed_progress,
                 code="merge_failed",
                 message=str(exc),
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
         upload.refresh_from_db()
+        progress = build_upload_progress(upload)
+        logger.info(
+            "tool upload merge response upload_id=%s total_chunks=%s confirmed_chunk_count=%s missing_chunks=%s complete_called=%s",
+            upload.upload_id,
+            progress["total_chunks"],
+            progress["uploaded_chunks_count"],
+            progress["missing_chunks"],
+            True,
+        )
         return self.success_response(
-            data=build_upload_progress(upload),
+            data=progress,
             code="merged",
             message="Upload merged successfully.",
         )

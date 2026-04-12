@@ -1,38 +1,14 @@
 import type {
-  ApiEnvelope,
   PaginatedPayload,
   ToolDetailPayload,
   ToolListItem,
 } from "@/lib/contracts";
-import { apiFetch } from "@/lib/api-client";
+import { apiFetch, readJsonBodySafely, unwrapApiEnvelope } from "@/lib/api-client";
 import type { PaginatedResourceState, ResourceState } from "@/lib/browser-bff";
 import { defaultFetchMessages } from "@/lib/fetch-messages";
 
 const LIST_ERR = "无法加载工具列表，请稍后重试或联系管理员。";
 const DETAIL_ERR = "无法加载工具详情，请刷新后重试或联系管理员。";
-
-type EnvelopeResult<T> = {
-  success: boolean;
-  message: string | null;
-  data: T | null;
-};
-
-function unwrapEnvelope<T>(json: unknown, response: Response): EnvelopeResult<T> {
-  if (json && typeof json === "object" && "success" in json) {
-    const payload = json as Partial<ApiEnvelope<T>>;
-    return {
-      success: payload.success ?? response.ok,
-      message: typeof payload.message === "string" ? payload.message : null,
-      data: (payload.data ?? null) as T | null,
-    };
-  }
-
-  return {
-    success: response.ok,
-    message: null,
-    data: (json as T) ?? null,
-  };
-}
 
 export async function fetchToolsList(
   page: number,
@@ -45,8 +21,8 @@ export async function fetchToolsList(
 
   try {
     const response = await apiFetch(`/api/tools?${params}`, { cache: "no-store" });
-    const json = (await response.json()) as unknown;
-    const payload = unwrapEnvelope<PaginatedPayload<ToolListItem>>(json, response);
+    const { json } = await readJsonBodySafely<unknown>(response);
+    const payload = unwrapApiEnvelope<PaginatedPayload<ToolListItem>>(json, response);
 
     if (response.status === 401) {
       return { kind: "error", message: defaultFetchMessages.expired };
@@ -72,8 +48,8 @@ export async function fetchToolDetail(
 ): Promise<ResourceState<ToolDetailPayload>> {
   try {
     const response = await apiFetch(`/api/tools/${toolId}`, { cache: "no-store" });
-    const json = (await response.json()) as unknown;
-    const payload = unwrapEnvelope<ToolDetailPayload>(json, response);
+    const { json } = await readJsonBodySafely<unknown>(response);
+    const payload = unwrapApiEnvelope<ToolDetailPayload>(json, response);
 
     if (response.status === 401) {
       return { kind: "error", message: defaultFetchMessages.expired };

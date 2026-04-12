@@ -187,6 +187,7 @@ export type ToolUploadProgress = {
   status: UploadStatus;
   uploaded_chunks: number[];
   uploaded_chunks_count: number;
+  missing_chunks: number[];
   total_chunks: number;
   uploaded_bytes: number;
   file_size: number;
@@ -205,10 +206,18 @@ export type ToolUploadSession = {
   total_chunks: number;
   uploaded_chunks_count: number;
   uploaded_chunks: number[];
+  missing_chunks: number[];
   progress: number;
   error_message: string;
   merged_file_path: string;
   recommended_chunk_size: number;
+};
+
+export type ToolVersionBindUploadPayload = {
+  upload_id: string;
+  version: string;
+  release_notes: string;
+  changelog: string;
 };
 
 /** @deprecated 请使用 ToolListItem */

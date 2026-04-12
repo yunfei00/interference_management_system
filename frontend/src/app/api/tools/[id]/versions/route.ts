@@ -8,7 +8,11 @@ export async function POST(
   const { id } = await context.params;
   const contentType = normalizeForwardedContentType(request.headers.get("content-type"));
   const body = await request.arrayBuffer();
-  return proxyProtectedJson(`/api/v1/tools/${id}/versions/`, {
+  const targetPath =
+    contentType?.includes("application/json")
+      ? `/api/v1/tools/${id}/versions/bind-upload/`
+      : `/api/v1/tools/${id}/versions/`;
+  return proxyProtectedJson(targetPath, {
     method: "POST",
     headers: contentType ? { "Content-Type": contentType } : undefined,
     body,

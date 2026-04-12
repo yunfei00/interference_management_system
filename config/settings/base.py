@@ -98,6 +98,12 @@ DATABASES = {
     )
 }
 DATABASES["default"]["CONN_MAX_AGE"] = env.int("DB_CONN_MAX_AGE", default=60)
+if DATABASES["default"]["ENGINE"] == "django.db.backends.sqlite3":
+    DATABASES["default"].setdefault("OPTIONS", {})
+    DATABASES["default"]["OPTIONS"].setdefault(
+        "timeout",
+        env.int("SQLITE_TIMEOUT_SECONDS", default=30),
+    )
 
 
 AUTH_PASSWORD_VALIDATORS = [

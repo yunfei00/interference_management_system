@@ -4,7 +4,12 @@ from django.db import transaction
 from rest_framework import serializers
 
 from .models import Tool, ToolUploadSession, ToolVersion
-from .services import bind_upload_to_tool_version, build_upload_progress, sync_tool_latest
+from .services import (
+    bind_upload_to_tool_version,
+    build_upload_progress,
+    create_tool_version_from_upload,
+    sync_tool_latest,
+)
 
 
 def normalize_tags(raw_value) -> str:
@@ -226,8 +231,12 @@ class ToolCreateSerializer(serializers.Serializer):
                 ).first()
                 if upload is None:
                     raise serializers.ValidationError({"upload_id": "Upload session is invalid."})
-                bind_upload_to_tool_version(upload=upload, version=version)
+                try:
+                    bind_upload_to_tool_version(upload=upload, version=version)
+                except ValueError as exc:
+                    raise serializers.ValidationError({"upload_id": str(exc)}) from exc
             sync_tool_latest(tool.id)
+            tool.refresh_from_db()
         return tool
 
 
@@ -268,23 +277,56 @@ class ToolVersionCreateSerializer(serializers.ModelSerializer):
             except (OSError, AttributeError):
                 file_size = 0
 
-        row = ToolVersion.objects.create(
-            tool=tool,
-            created_by=user,
-            file_size=file_size,
-            file_name=file_name,
-            **validated_data,
-        )
-        if upload_id:
-            upload = ToolUploadSession.objects.filter(
-                upload_id=upload_id,
+        with transaction.atomic():
+            row = ToolVersion.objects.create(
+                tool=tool,
+                created_by=user,
+                file_size=file_size,
+                file_name=file_name,
+                **validated_data,
+            )
+            if upload_id:
+                upload = ToolUploadSession.objects.filter(
+                    upload_id=upload_id,
+                    user=user,
+                    consumed_at__isnull=True,
+                ).first()
+                if upload is None:
+                    raise serializers.ValidationError({"upload_id": "Upload session is invalid."})
+                try:
+                    bind_upload_to_tool_version(upload=upload, version=row)
+                except ValueError as exc:
+                    raise serializers.ValidationError({"upload_id": str(exc)}) from exc
+            sync_tool_latest(tool.id)
+            row.refresh_from_db()
+        return row
+
+
+class ToolVersionBindUploadSerializer(serializers.Serializer):
+    upload_id = serializers.CharField(max_length=64)
+    version = serializers.CharField(max_length=50)
+    release_notes = serializers.CharField(required=False, allow_blank=True, default="")
+    changelog = serializers.CharField(required=False, allow_blank=True, default="")
+
+    def save(self, **kwargs):
+        user = self.context["request"].user
+        tool: Tool = self.context["tool"]
+        try:
+            row, created = create_tool_version_from_upload(
+                tool=tool,
                 user=user,
-                consumed_at__isnull=True,
-            ).first()
-            if upload is None:
-                raise serializers.ValidationError({"upload_id": "Upload session is invalid."})
-            bind_upload_to_tool_version(upload=upload, version=row)
-        sync_tool_latest(tool.id)
+                upload_id=(self.validated_data["upload_id"] or "").strip(),
+                version=(self.validated_data["version"] or "").strip(),
+                release_notes=self.validated_data.get("release_notes", ""),
+                changelog=self.validated_data.get("changelog", ""),
+            )
+        except ValueError as exc:
+            message = str(exc)
+            if "Version already exists" in message:
+                raise serializers.ValidationError({"version": message}) from exc
+            raise serializers.ValidationError({"upload_id": message}) from exc
+        self.was_created = created
+        row.refresh_from_db()
         return row
 
 
@@ -309,6 +351,7 @@ class ToolUploadInitSerializer(serializers.Serializer):
 class ToolUploadSessionSerializer(serializers.ModelSerializer):
     uploaded_chunks = serializers.SerializerMethodField()
     progress = serializers.SerializerMethodField()
+    missing_chunks = serializers.SerializerMethodField()
 
     class Meta:
         model = ToolUploadSession
@@ -321,6 +364,7 @@ class ToolUploadSessionSerializer(serializers.ModelSerializer):
             "total_chunks",
             "uploaded_chunks_count",
             "uploaded_chunks",
+            "missing_chunks",
             "progress",
             "error_message",
             "merged_file_path",
@@ -334,3 +378,6 @@ class ToolUploadSessionSerializer(serializers.ModelSerializer):
 
     def get_progress(self, obj: ToolUploadSession):
         return build_upload_progress(obj)["progress"]
+
+    def get_missing_chunks(self, obj: ToolUploadSession):
+        return build_upload_progress(obj)["missing_chunks"]

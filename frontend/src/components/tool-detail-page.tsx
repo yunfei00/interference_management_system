@@ -3,9 +3,14 @@
 import type { Route } from "next";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
-import type { ApiEnvelope, ToolDetailPayload, ToolVersionRow } from "@/lib/contracts";
+import type {
+  ApiEnvelope,
+  ToolDetailPayload,
+  ToolVersionBindUploadPayload,
+  ToolVersionRow,
+} from "@/lib/contracts";
 import { apiFetch, apiUrl } from "@/lib/api-client";
 import { hasDashboardPermission } from "@/lib/dashboard-navigation";
 import { runChunkedUpload, type UploadState } from "@/lib/tool-upload";
@@ -243,6 +248,7 @@ export function ToolDetailPage({ toolId }: ToolDetailPageProps) {
     progress: 0,
     error: null,
   });
+  const bindRequestKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (detailState.kind !== "ready" || editing) {
@@ -330,20 +336,40 @@ export function ToolDetailPage({ toolId }: ToolDetailPageProps) {
         });
         uploadId = result.uploadId;
       }
-      const values = {
+      const values: ToolVersionBindUploadPayload = {
         version: versionNumber.trim(),
         release_notes: versionNotes.trim(),
         changelog: versionChangelog.trim(),
         upload_id: uploadId,
-        file_name: versionFile?.name ?? "",
       };
-
-      const response = await apiFetch(`/api/tools/${toolId}/versions`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(values),
-      });
-      await parseApiData(response);
+      if (uploadId) {
+        const bindRequestKey = `${toolId}:${values.version}:${uploadId}`;
+        if (bindRequestKeyRef.current === bindRequestKey) {
+          throw new Error("当前版本绑定请求仍在处理中，请稍候。");
+        }
+        bindRequestKeyRef.current = bindRequestKey;
+        try {
+          const response = await apiFetch(`/api/tools/${toolId}/versions/bind-upload`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(values),
+          });
+          await parseApiData<ToolVersionRow>(response);
+        } catch (error) {
+          bindRequestKeyRef.current = null;
+          throw error;
+        }
+      } else {
+        const formData = new FormData();
+        formData.append("version", values.version);
+        formData.append("release_notes", values.release_notes);
+        formData.append("changelog", values.changelog);
+        const response = await apiFetch(`/api/tools/${toolId}/versions`, {
+          method: "POST",
+          body: formData,
+        });
+        await parseApiData<ToolVersionRow>(response);
+      }
       setVersionNumber("");
       setVersionNotes("");
       setVersionChangelog("");

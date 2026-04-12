@@ -115,6 +115,13 @@ class ToolUploadSession(models.Model):
         on_delete=models.CASCADE,
         related_name="tool_upload_sessions",
     )
+    bound_version = models.ForeignKey(
+        ToolVersion,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="bound_upload_sessions",
+    )
     tool = models.ForeignKey(
         Tool,
         on_delete=models.SET_NULL,

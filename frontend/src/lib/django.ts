@@ -12,6 +12,7 @@ import type {
   SessionPayload,
   TokenPayload,
 } from "@/lib/contracts";
+import { readJsonBodySafely } from "@/lib/api-client";
 import { normalizeForwardedContentType } from "@/lib/content-type";
 import {
   ACCESS_COOKIE_NAME,
@@ -744,11 +745,8 @@ function withAuthorizationHeader(
 }
 
 async function parseJsonSafely<T>(response: Response): Promise<T | null> {
-  try {
-    return (await response.json()) as T;
-  } catch {
-    return null;
-  }
+  const { json } = await readJsonBodySafely<T>(response);
+  return json;
 }
 
 function isAuthFailure(

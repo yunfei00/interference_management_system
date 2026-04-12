@@ -263,11 +263,41 @@ export async function runChunkedUpload(params: {
     return toMissingChunkList(refreshedStatus, totalChunks, confirmedChunks);
   }
 
+  function isUploadCompleted(progress: Partial<ToolUploadProgress> | null | undefined) {
+    return progress?.status === "completed" || Boolean(progress?.merged_file_path);
+  }
+
+  async function waitForServerCompletion(): Promise<ToolUploadProgress | null> {
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      const latestStatus = await getUploadStatus(uploadId);
+      syncConfirmedChunks(confirmedChunks, latestStatus, totalChunks);
+
+      if (isUploadCompleted(latestStatus)) {
+        return latestStatus;
+      }
+
+      if (latestStatus.status !== "merging") {
+        return latestStatus;
+      }
+
+      await new Promise((resolve) => window.setTimeout(resolve, 1000));
+    }
+
+    return null;
+  }
+
   async function completeUpload(): Promise<void> {
     for (let pass = 0; pass < MAX_COMPLETE_RECOVERY_PASSES; pass += 1) {
       const missingBeforeComplete = await reconcileMissingChunks(null);
       if (missingBeforeComplete.length) {
         continue;
+      }
+
+      const statusBeforeComplete = await getUploadStatus(uploadId);
+      syncConfirmedChunks(confirmedChunks, statusBeforeComplete, totalChunks);
+      if (isUploadCompleted(statusBeforeComplete)) {
+        emit("completed");
+        return;
       }
 
       ensureReadyToComplete();
@@ -281,11 +311,21 @@ export async function runChunkedUpload(params: {
         return;
       } catch (error) {
         completeRequested = false;
+        const completionStatus = await waitForServerCompletion();
+        if (isUploadCompleted(completionStatus)) {
+          emit("completed");
+          return;
+        }
         if (error instanceof ApiResponseError) {
           const missingChunks = await reconcileMissingChunks(
             (error.data as Partial<ToolUploadProgress> | null) ?? null,
           );
           if (!missingChunks.length) {
+            const recoveredStatus = await waitForServerCompletion();
+            if (isUploadCompleted(recoveredStatus)) {
+              emit("completed");
+              return;
+            }
             continue;
           }
         }

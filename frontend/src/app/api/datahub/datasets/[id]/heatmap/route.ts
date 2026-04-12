@@ -1,5 +1,7 @@
 import { proxyProtectedBinary } from "@/lib/server-bff";
 
+export const maxDuration = 3600;
+
 export async function GET(
   _request: Request,
   context: { params: Promise<{ id: string }> },

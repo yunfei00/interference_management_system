@@ -13,6 +13,7 @@ import {
   fetchProtectedBackendData,
   fetchProtectedBackendResponse,
   setSessionCookies,
+  type DjangoBackendFetchOptions,
 } from "@/lib/django";
 
 export async function proxyProtectedJson<T>(path: string, init?: RequestInit) {
@@ -55,7 +56,10 @@ export async function proxyProtectedJson<T>(path: string, init?: RequestInit) {
   }
 }
 
-export async function proxyProtectedBinary(path: string, init?: RequestInit) {
+export async function proxyProtectedBinary(
+  path: string,
+  init?: DjangoBackendFetchOptions,
+) {
   try {
     const cookieStore = await cookies();
     const accessToken = cookieStore.get(ACCESS_COOKIE_NAME)?.value;
@@ -64,7 +68,7 @@ export async function proxyProtectedBinary(path: string, init?: RequestInit) {
     const result = await fetchProtectedBackendResponse(
       path,
       { accessToken, refreshToken },
-      init,
+      { ...init, backendTimeoutMs: false },
     );
 
     if (!result.ok) {
@@ -83,14 +87,19 @@ export async function proxyProtectedBinary(path: string, init?: RequestInit) {
     }
 
     const headers = new Headers();
-    const contentType = result.response.headers.get("content-type");
-    const contentDisposition = result.response.headers.get("content-disposition");
-    if (contentType) {
-      headers.set("content-type", contentType);
-    }
-    if (contentDisposition) {
-      headers.set("content-disposition", contentDisposition);
-    }
+    const copyHeader = (name: string) => {
+      const value = result.response.headers.get(name);
+      if (value) {
+        headers.set(name, value);
+      }
+    };
+    copyHeader("content-type");
+    copyHeader("content-disposition");
+    copyHeader("content-length");
+    copyHeader("accept-ranges");
+    copyHeader("content-range");
+    copyHeader("cache-control");
+    copyHeader("x-content-type-options");
 
     const response = new NextResponse(result.response.body, {
       status: result.status,

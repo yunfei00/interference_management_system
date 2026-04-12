@@ -47,6 +47,19 @@ def delete_version_file(version: ToolVersion) -> None:
         version.file.delete(save=False)
 
 
+def _tool_version_file_response(version: ToolVersion) -> FileResponse:
+    """流式返回安装包（避免手写 Content-Length / 大块参数与存储后端或 DRF 行为冲突）。"""
+    safe_name = version.file_name or Path(version.file.name).name
+    response = FileResponse(
+        version.file.open("rb"),
+        as_attachment=True,
+        filename=safe_name,
+    )
+    response["Accept-Ranges"] = "bytes"
+    response["Cache-Control"] = "private, no-store"
+    return response
+
+
 @extend_schema(tags=["Tools"])
 class ToolViewSet(BaselineModelViewSet):
     permission_classes = [IsAuthenticated, MappedPermission]
@@ -284,11 +297,7 @@ class ToolViewSet(BaselineModelViewSet):
                 message="No downloadable file was found for this tool.",
                 status_code=status.HTTP_404_NOT_FOUND,
             )
-        return FileResponse(
-            version.file.open("rb"),
-            as_attachment=True,
-            filename=version.file_name or Path(version.file.name).name,
-        )
+        return _tool_version_file_response(version)
 
     @extend_schema(tags=["Tools"])
     @action(
@@ -306,11 +315,7 @@ class ToolViewSet(BaselineModelViewSet):
                 message="No downloadable file was found for this version.",
                 status_code=status.HTTP_404_NOT_FOUND,
             )
-        return FileResponse(
-            version.file.open("rb"),
-            as_attachment=True,
-            filename=version.file_name or Path(version.file.name).name,
-        )
+        return _tool_version_file_response(version)
 
     @extend_schema(tags=["Tools"])
     @action(detail=False, methods=["post"], url_path="uploads/init", parser_classes=[JSONParser])

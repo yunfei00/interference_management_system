@@ -109,6 +109,11 @@ export type BackendHealthResult = {
 
 const REQUEST_TIMEOUT_MS = 10_000;
 const DEFAULT_ERROR_MESSAGE = "无法连接 Django 后端。";
+
+/** 供 `djangoFetch` 使用：`backendTimeoutMs: false` 表示不套默认超时（大文件下载等流式响应）。 */
+export type DjangoBackendFetchOptions = RequestInit & {
+  backendTimeoutMs?: number | false;
+};
 const AUTH_FAILURE_CODES = new Set([
   "authentication_failed",
   "not_authenticated",
@@ -400,7 +405,7 @@ export async function fetchProtectedBackendData<T>(
     accessToken?: string;
     refreshToken?: string;
   },
-  init?: RequestInit,
+  init?: DjangoBackendFetchOptions,
 ): Promise<ProtectedBackendResult<T>> {
   if (!tokens.accessToken && !tokens.refreshToken) {
     return {
@@ -501,7 +506,7 @@ export async function fetchProtectedBackendResponse(
     accessToken?: string;
     refreshToken?: string;
   },
-  init?: RequestInit,
+  init?: DjangoBackendFetchOptions,
 ): Promise<ProtectedBackendResponseResult> {
   if (!tokens.accessToken && !tokens.refreshToken) {
     return {
@@ -710,32 +715,47 @@ async function fetchBackendEnvelope<T>(
   return { response, payload };
 }
 
-async function djangoFetch(path: string, init?: RequestInit) {
+async function djangoFetch(path: string, init?: DjangoBackendFetchOptions) {
+  const { backendTimeoutMs, ...fetchInit } = init ?? {};
   const url = new URL(path, `${getDjangoBaseUrl()}/`);
-  const headers = new Headers(init?.headers);
+  const headers = new Headers(fetchInit.headers);
   const currentContentType = headers.get("Content-Type") ?? headers.get("content-type");
   const normalizedContentType = normalizeForwardedContentType(currentContentType);
   if (normalizedContentType && normalizedContentType !== currentContentType) {
     headers.set("Content-Type", normalizedContentType);
   }
+  // 大文件下载等请求虽不设超时，仍须保持 Accept: application/json。
+  // 若改为 */*，DRF 可能走 Browsable API 并返回 HTML，Next 代理会误判为「非 JSON」错误。
   headers.set("Accept", "application/json");
-  if (typeof init?.body === "string" && !headers.has("Content-Type")) {
+  if (typeof fetchInit.body === "string" && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
   }
 
+  const timeoutMs =
+    backendTimeoutMs === false
+      ? null
+      : typeof backendTimeoutMs === "number"
+        ? backendTimeoutMs
+        : REQUEST_TIMEOUT_MS;
+
   return fetch(url, {
-    ...init,
+    ...fetchInit,
     headers,
     cache: "no-store",
-    redirect: init?.redirect ?? "manual",
-    signal: init?.signal ?? AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    redirect: fetchInit.redirect ?? "manual",
+    signal:
+      fetchInit.signal !== undefined
+        ? fetchInit.signal
+        : timeoutMs === null
+          ? undefined
+          : AbortSignal.timeout(timeoutMs),
   });
 }
 
 function withAuthorizationHeader(
-  init: RequestInit | undefined,
+  init: DjangoBackendFetchOptions | undefined,
   accessToken: string,
-): RequestInit {
+): DjangoBackendFetchOptions {
   const headers = new Headers(init?.headers);
   headers.set("Authorization", `Bearer ${accessToken}`);
   return {

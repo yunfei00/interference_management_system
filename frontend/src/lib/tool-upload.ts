@@ -183,9 +183,8 @@ export async function runChunkedUpload(params: {
   }
 
   async function uploadChunkWithRetry(chunkIndex: number) {
-    retryQueue.delete(chunkIndex);
-
     for (let attempt = 0; attempt <= retry; attempt += 1) {
+      retryQueue.delete(chunkIndex);
       inflightChunks.add(chunkIndex);
       emit("uploading");
 
@@ -196,12 +195,14 @@ export async function runChunkedUpload(params: {
         const progress = await uploadChunk(uploadId, chunkIndex, blob);
         syncConfirmedChunks(confirmedChunks, progress, totalChunks);
         confirmedChunks.add(chunkIndex);
+        retryQueue.delete(chunkIndex);
         emit("uploading");
         return;
       } catch (error) {
         const resolvedError =
           error instanceof Error ? error : new Error("分片上传失败");
         if (attempt >= retry) {
+          retryQueue.delete(chunkIndex);
           throw resolvedError;
         }
         retryQueue.add(chunkIndex);

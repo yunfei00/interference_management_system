@@ -1,16 +1,23 @@
 from __future__ import annotations
 
-from django.db.models import Count, Prefetch
+from django.db.models import Count, Prefetch, Q
 
 from .models import Tool, ToolVersion
 
 
-def get_tool_list_queryset():
-    return (
-        Tool.objects.select_related("created_by")
-        .annotate(versions_count=Count("versions", distinct=True))
-        .order_by("-updated_at", "-id")
+def get_tool_list_queryset(*, q: str = ""):
+    queryset = Tool.objects.select_related("created_by").annotate(
+        versions_count=Count("versions", distinct=True)
     )
+    if q:
+        queryset = queryset.filter(
+            Q(name__icontains=q)
+            | Q(code__icontains=q)
+            | Q(category__icontains=q)
+            | Q(summary__icontains=q)
+            | Q(tags__icontains=q)
+        )
+    return queryset.order_by("-updated_at", "-id")
 
 
 def get_tool_detail_queryset():

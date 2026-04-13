@@ -28,8 +28,9 @@ export function useToolsPaginatedResource({
       ? query.page_size
       : Number.parseInt(String(query.page_size ?? DEFAULT_PAGE_SIZE), 10) ||
         DEFAULT_PAGE_SIZE;
+  const keyword = String(query.q ?? "").trim();
 
-  const requestKey = JSON.stringify({ page, pageSize, enabled });
+  const requestKey = JSON.stringify({ page, pageSize, keyword, enabled });
 
   const [resolvedState, setResolvedState] = useState<{
     requestKey: string;
@@ -48,7 +49,7 @@ export function useToolsPaginatedResource({
     }
 
     async function load() {
-      const next = await fetchToolsList(page, pageSize);
+      const next = await fetchToolsList(page, pageSize, keyword);
       if (!cancelled) {
         setResolvedState({ requestKey, value: next });
       }
@@ -59,7 +60,7 @@ export function useToolsPaginatedResource({
     return () => {
       cancelled = true;
     };
-  }, [enabled, page, pageSize, requestKey]);
+  }, [enabled, page, pageSize, keyword, requestKey]);
 
   if (!enabled) {
     return { kind: "loading" };

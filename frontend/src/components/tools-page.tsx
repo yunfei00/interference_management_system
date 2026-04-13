@@ -3,7 +3,7 @@
 import type { Route } from "next";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import type { ToolListItem } from "@/lib/contracts";
 import { hasDashboardPermission } from "@/lib/dashboard-navigation";
@@ -41,9 +41,14 @@ export function ToolsPage() {
     ready && hasDashboardPermission(permissions, [...TOOLS_MANAGE_ACCESS]);
 
   const [page, setPage] = useState(1);
+  const [keyword, setKeyword] = useState("");
+
+  useEffect(() => {
+    setPage(1);
+  }, [keyword]);
 
   const toolsState = useToolsPaginatedResource({
-    query: { page, page_size: 10 },
+    query: { page, page_size: 10, q: keyword },
     enabled: canView,
   });
 
@@ -79,6 +84,15 @@ export function ToolsPage() {
                 </div>
               ) : null}
             </header>
+            <div className={pageStyles.searchRow}>
+              <input
+                className={pageStyles.searchInput}
+                onChange={(event) => setKeyword(event.target.value)}
+                placeholder="搜索工具名、编码、分类、简介或标签"
+                type="search"
+                value={keyword}
+              />
+            </div>
 
             {toolsState.kind === "ready" && toolsState.data.items.length ? (
               <div className={pageStyles.toolGrid}>
@@ -109,7 +123,9 @@ export function ToolsPage() {
 
             {toolsState.kind === "ready" && !toolsState.data.items.length ? (
               <div className={styles.empty}>
-                {canManage ? (
+                {keyword.trim() ? (
+                  <>未找到匹配“{keyword.trim()}”的工具，请调整关键词后重试。</>
+                ) : canManage ? (
                   <>
                     暂无工具。可在上方上传，或于后端执行{" "}
                     <code>python manage.py seed_demo_tools</code>。

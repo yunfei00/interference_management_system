@@ -13,11 +13,15 @@ const DETAIL_ERR = "无法加载工具详情，请刷新后重试或联系管理
 export async function fetchToolsList(
   page: number,
   pageSize: number = 10,
+  keyword: string = "",
 ): Promise<PaginatedResourceState<ToolListItem>> {
   const params = new URLSearchParams({
     page: String(Math.max(1, page)),
     page_size: String(Math.max(1, pageSize)),
   });
+  if (keyword.trim()) {
+    params.set("q", keyword.trim());
+  }
 
   try {
     const response = await apiFetch(`/api/tools?${params}`, { cache: "no-store" });

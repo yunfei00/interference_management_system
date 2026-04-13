@@ -111,6 +111,28 @@
   border-bottom-color: rgba(36, 122, 116, 0.45);
 }
 
+.searchRow {
+  margin: 0 0 1.1rem;
+}
+
+.searchInput {
+  width: 100%;
+  max-width: 34rem;
+  height: 2.35rem;
+  padding: 0.46rem 0.72rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(22, 50, 63, 0.2);
+  background: #fff;
+  color: var(--ink);
+  font-size: 0.88rem;
+}
+
+.searchInput:focus-visible {
+  outline: 2px solid rgba(36, 122, 116, 0.28);
+  outline-offset: 1px;
+  border-color: rgba(36, 122, 116, 0.5);
+}
+
 .cardMenu {
   position: absolute;
   top: 0.65rem;

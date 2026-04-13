@@ -134,9 +134,10 @@ class ToolViewSet(BaselineModelViewSet):
     http_method_names = ["get", "post", "put", "patch", "delete", "head", "options"]
 
     def get_queryset(self):
+        q = self.request.query_params.get("q", "").strip()
         if self.action == "retrieve":
             return get_tool_detail_queryset()
-        return get_tool_list_queryset()
+        return get_tool_list_queryset(q=q)
 
     def get_serializer_class(self):
         if self.action == "list":

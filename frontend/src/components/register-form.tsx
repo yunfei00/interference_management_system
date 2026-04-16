@@ -55,13 +55,13 @@ export function RegisterForm({
           return;
         }
         if (!response.ok || !payload.success || !Array.isArray(payload.data)) {
-          setLoadError(payload.message || "无法加载部门列表。");
+          setLoadError(payload.message || "Unable to load department options.");
           return;
         }
         setDepartments(payload.data);
       } catch {
         if (!cancelled) {
-          setLoadError("无法加载部门列表。");
+          setLoadError("Unable to load department options.");
         }
       }
     })();
@@ -78,38 +78,42 @@ export function RegisterForm({
     const formData = new FormData(event.currentTarget);
     const username = String(formData.get("username") ?? "").trim();
     const email = String(formData.get("email") ?? "").trim();
+    const realName = String(formData.get("real_name") ?? "").trim();
     const company = String(formData.get("company") ?? "").trim();
     const phone = String(formData.get("phone") ?? "").trim();
+    const title = String(formData.get("title") ?? "").trim();
     const departmentRaw = String(formData.get("department") ?? "").trim();
     const password = String(formData.get("password") ?? "");
     const confirmPassword = String(formData.get("confirm_password") ?? "");
 
-    if (!username || !password) {
-      setError("请填写用户名和密码。");
+    if (!username || !email || !realName || !password) {
+      setError("Username, email, real name, and password are required.");
       return;
     }
     if (password.length < 8) {
-      setError("密码至少 8 位。");
+      setError("Password must be at least 8 characters long.");
       return;
     }
     if (password !== confirmPassword) {
-      setError("两次输入的密码不一致。");
+      setError("The two password entries do not match.");
       return;
     }
 
     const body: Record<string, unknown> = {
       username,
+      email,
+      real_name: realName,
       password,
       confirm_password: confirmPassword,
     };
-    if (email) {
-      body.email = email;
-    }
     if (company) {
       body.company = company;
     }
     if (phone) {
       body.phone = phone;
+    }
+    if (title) {
+      body.title = title;
     }
     if (departmentRaw) {
       const id = Number(departmentRaw);
@@ -130,14 +134,17 @@ export function RegisterForm({
       > | null;
 
       if (!response.ok || !payload?.success) {
-        setError(pickRegisterError(payload, "注册失败，请检查填写内容。"));
+        setError(pickRegisterError(payload, "Registration failed. Please check the form and try again."));
         return;
       }
 
-      setSuccess(payload.message || "注册成功，请等待审批后再登录。");
+      setSuccess(
+        payload.message ||
+          "Registration submitted successfully. Please wait for administrator approval.",
+      );
       (event.currentTarget as HTMLFormElement).reset();
     } catch {
-      setError("注册请求失败，请稍后重试。");
+      setError("Registration failed. Please try again later.");
     } finally {
       setSubmitting(false);
     }
@@ -147,14 +154,16 @@ export function RegisterForm({
     <section className={`surface ${styles.card}`}>
       <div className={styles.header}>
         <div className={styles.headerTop}>
-          <div className="eyebrow">企业账号</div>
+          <div className="eyebrow">Enterprise Account</div>
           <div className={styles.secureBadge}>
             <span className={styles.secureDot} />
-            审批开通
+            Approval Required
           </div>
         </div>
-        <h1 className={styles.title}>注册</h1>
-        <p className={styles.subtitle}>提交后由管理员审批，通过后即可登录工作台。</p>
+        <h1 className={styles.title}>Register</h1>
+        <p className={styles.subtitle}>
+          Submit your details and wait for administrator approval before signing in.
+        </p>
       </div>
 
       {loadError ? <div className={styles.error}>{loadError}</div> : null}
@@ -164,65 +173,69 @@ export function RegisterForm({
       <form className={styles.form} onSubmit={handleSubmit}>
         <label className={styles.field}>
           <div className={styles.labelRow}>
-            <span className={styles.label}>用户名</span>
-            <span className={styles.fieldHint}>必填</span>
+            <span className={styles.label}>Username</span>
+            <span className={styles.fieldHint}>Required</span>
           </div>
-          <input
-            autoComplete="username"
-            className={styles.input}
-            name="username"
-            placeholder="请输入用户名"
-            required
-            type="text"
-          />
+          <input className={styles.input} name="username" required type="text" />
         </label>
 
         <label className={styles.field}>
           <div className={styles.labelRow}>
-            <span className={styles.label}>邮箱</span>
-            <span className={styles.fieldHint}>选填</span>
+            <span className={styles.label}>Email</span>
+            <span className={styles.fieldHint}>Required</span>
           </div>
           <input
             autoComplete="email"
             className={styles.input}
             name="email"
             placeholder="name@company.com"
+            required
             type="email"
           />
         </label>
 
         <label className={styles.field}>
           <div className={styles.labelRow}>
-            <span className={styles.label}>公司</span>
-            <span className={styles.fieldHint}>选填</span>
+            <span className={styles.label}>Real Name</span>
+            <span className={styles.fieldHint}>Required</span>
           </div>
-          <input className={styles.input} name="company" placeholder="公司全称" type="text" />
+          <input className={styles.input} name="real_name" required type="text" />
         </label>
 
         <label className={styles.field}>
           <div className={styles.labelRow}>
-            <span className={styles.label}>手机</span>
-            <span className={styles.fieldHint}>选填</span>
+            <span className={styles.label}>Company</span>
+            <span className={styles.fieldHint}>Optional</span>
           </div>
-          <input
-            autoComplete="tel"
-            className={styles.input}
-            name="phone"
-            placeholder="手机号"
-            type="tel"
-          />
+          <input className={styles.input} name="company" placeholder="Company name" type="text" />
         </label>
 
         <label className={styles.field}>
           <div className={styles.labelRow}>
-            <span className={styles.label}>所属部门</span>
-            <span className={styles.fieldHint}>选填</span>
+            <span className={styles.label}>Phone</span>
+            <span className={styles.fieldHint}>Optional</span>
+          </div>
+          <input autoComplete="tel" className={styles.input} name="phone" type="tel" />
+        </label>
+
+        <label className={styles.field}>
+          <div className={styles.labelRow}>
+            <span className={styles.label}>Title</span>
+            <span className={styles.fieldHint}>Optional</span>
+          </div>
+          <input className={styles.input} name="title" placeholder="Job title" type="text" />
+        </label>
+
+        <label className={styles.field}>
+          <div className={styles.labelRow}>
+            <span className={styles.label}>Department</span>
+            <span className={styles.fieldHint}>Optional</span>
           </div>
           <select className={styles.input} defaultValue="" name="department">
-            <option value="">暂不选择</option>
-            {departments.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.full_name}
+            <option value="">Not assigned yet</option>
+            {departments.map((department) => (
+              <option key={department.id} value={department.id}>
+                {department.full_name}
               </option>
             ))}
           </select>
@@ -230,14 +243,13 @@ export function RegisterForm({
 
         <label className={styles.field}>
           <div className={styles.labelRow}>
-            <span className={styles.label}>密码</span>
-            <span className={styles.fieldHint}>不少于 8 位</span>
+            <span className={styles.label}>Password</span>
+            <span className={styles.fieldHint}>At least 8 characters</span>
           </div>
           <input
             autoComplete="new-password"
             className={styles.input}
             name="password"
-            placeholder="设置密码"
             required
             type="password"
           />
@@ -245,33 +257,28 @@ export function RegisterForm({
 
         <label className={styles.field}>
           <div className={styles.labelRow}>
-            <span className={styles.label}>确认密码</span>
-            <span className={styles.fieldHint}>再次输入</span>
+            <span className={styles.label}>Confirm Password</span>
+            <span className={styles.fieldHint}>Repeat it</span>
           </div>
           <input
             autoComplete="new-password"
             className={styles.input}
             name="confirm_password"
-            placeholder="再次输入密码"
             required
             type="password"
           />
         </label>
 
         <button className={styles.submitButton} disabled={submitting} type="submit">
-          {submitting ? "提交中..." : "提交注册"}
+          {submitting ? "Submitting..." : "Submit Registration"}
         </button>
       </form>
 
       <div className={styles.footer}>
         <p>
-          已有账号？
-          <button
-            className={styles.inlineLink}
-            onClick={onSwitchToLogin}
-            type="button"
-          >
-            去登录
+          Already have an account?
+          <button className={styles.inlineLink} onClick={onSwitchToLogin} type="button">
+            Sign in
           </button>
         </p>
       </div>

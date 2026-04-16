@@ -3,7 +3,7 @@
 import type { Route } from "next";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import type { ToolListItem } from "@/lib/contracts";
 import { hasDashboardPermission } from "@/lib/dashboard-navigation";
@@ -42,10 +42,6 @@ export function ToolsPage() {
 
   const [page, setPage] = useState(1);
   const [keyword, setKeyword] = useState("");
-
-  useEffect(() => {
-    setPage(1);
-  }, [keyword]);
 
   const toolsState = useToolsPaginatedResource({
     query: { page, page_size: 10, q: keyword },
@@ -87,7 +83,10 @@ export function ToolsPage() {
             <div className={pageStyles.searchRow}>
               <input
                 className={pageStyles.searchInput}
-                onChange={(event) => setKeyword(event.target.value)}
+                onChange={(event) => {
+                  setKeyword(event.target.value);
+                  setPage(1);
+                }}
                 placeholder="搜索工具名、编码、分类、简介或标签"
                 type="search"
                 value={keyword}

@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Iterable
 
 from .models import User
+from .services import get_user_role
 
 DEPARTMENT_PERMISSIONS = {
     "department.electromagnetic.view",
@@ -25,6 +26,7 @@ TOOLS_MANAGE_KEY = "tools.manage"
 RSE_PORTAL_PERMISSIONS = frozenset({"rse.dashboard.view"})
 EMC_PORTAL_PERMISSIONS = frozenset({"emc.dashboard.view"})
 RF_PORTAL_PERMISSIONS = frozenset({"rf.dashboard.view"})
+PROJECTS_PORTAL_PERMISSIONS = frozenset({"projects.module.view"})
 
 STAFF_PERMISSIONS = {
     "ops.host.view",
@@ -32,15 +34,28 @@ STAFF_PERMISSIONS = {
     "ops.command.view",
     "ops.command.run",
     "admin.users.view",
+    "admin.users.manage",
+    "admin.audit.view",
+}
+
+SUPER_ADMIN_PERMISSIONS = {
+    "admin.users.delete",
+    "admin.users.manage_super_admin",
 }
 
 
 def is_user_approved(user) -> bool:
     if not getattr(user, "is_authenticated", False):
         return False
-    if getattr(user, "is_superuser", False):
-        return True
-    return getattr(user, "approve_status", User.APPROVE_APPROVED) == User.APPROVE_APPROVED
+    if getattr(user, "is_deleted", False):
+        return False
+    return getattr(user, "approve_status", User.STATUS_PENDING) == User.STATUS_APPROVED
+
+
+def is_user_admin(user) -> bool:
+    if not is_user_approved(user):
+        return False
+    return get_user_role(user) in {User.ROLE_SUPER_ADMIN, User.ROLE_ADMIN}
 
 
 def get_user_department_codes(user) -> set[str]:
@@ -59,7 +74,7 @@ def _add_interference_bundle(target: set[str], *, staff: bool) -> None:
             "datahub.view",
             "datahub.create",
             "datahub.upload",
-        },
+        }
     )
     target.add("tools.view")
     target.add("tools.download")
@@ -74,14 +89,18 @@ def get_user_perm_keys(user) -> set[str]:
         return set()
 
     permissions: set[str] = set()
+    role = get_user_role(user)
+    permissions.update(PROJECTS_PORTAL_PERMISSIONS)
 
-    if getattr(user, "is_staff", False) or getattr(user, "is_superuser", False):
+    if role in {User.ROLE_ADMIN, User.ROLE_SUPER_ADMIN}:
         permissions.add("overview.view")
         permissions.update(DEPARTMENT_PERMISSIONS)
         _add_interference_bundle(permissions, staff=True)
         permissions.update(RSE_PORTAL_PERMISSIONS)
         permissions.update(EMC_PORTAL_PERMISSIONS)
         permissions.update(RF_PORTAL_PERMISSIONS)
+        if role == User.ROLE_SUPER_ADMIN:
+            permissions.update(SUPER_ADMIN_PERMISSIONS)
         return permissions
 
     department_codes = get_user_department_codes(user)
@@ -105,8 +124,8 @@ def get_user_perm_keys(user) -> set[str]:
 
 
 def user_has_permission(user, permission: str | Iterable[str]) -> bool:
-    if getattr(user, "is_superuser", False):
-        return True
+    if not is_user_approved(user):
+        return False
 
     if isinstance(permission, str):
         permission_list = [permission]
@@ -127,7 +146,7 @@ def build_menu_tree_for_user(user) -> list[dict]:
         {
             "id": 1,
             "code": "overview",
-            "name": "工作台",
+            "name": "Workspace",
             "path": "/dashboard",
             "icon": "gauge",
             "sort": 10,
@@ -140,7 +159,7 @@ def build_menu_tree_for_user(user) -> list[dict]:
         {
             "id": 88,
             "code": "system_admin",
-            "name": "系统管理",
+            "name": "System Management",
             "path": "/dashboard/admin/users",
             "icon": "settings",
             "sort": 15,
@@ -152,7 +171,7 @@ def build_menu_tree_for_user(user) -> list[dict]:
                 {
                     "id": 89,
                     "code": "admin_users",
-                    "name": "用户管理",
+                    "name": "User Management",
                     "path": "/dashboard/admin/users",
                     "icon": "users",
                     "sort": 10,
@@ -161,13 +180,26 @@ def build_menu_tree_for_user(user) -> list[dict]:
                     "is_external": False,
                     "permission_key": "admin.users.view",
                     "children": [],
-                },
+                }
             ],
+        },
+        {
+            "id": 4,
+            "code": "projects",
+            "name": "Project Management",
+            "path": "/dashboard/projects",
+            "icon": "folder-kanban",
+            "sort": 18,
+            "status": 1,
+            "visible": visible("projects.module.view"),
+            "is_external": False,
+            "permission_key": "projects.module.view",
+            "children": [],
         },
         {
             "id": 2,
             "code": "electromagnetic",
-            "name": "电磁",
+            "name": "Electromagnetic",
             "path": "/dashboard/electromagnetic",
             "icon": "zap",
             "sort": 20,
@@ -179,7 +211,7 @@ def build_menu_tree_for_user(user) -> list[dict]:
                 {
                     "id": 21,
                     "code": "interference",
-                    "name": "干扰",
+                    "name": "Interference",
                     "path": "/dashboard/electromagnetic/interference",
                     "icon": "radar",
                     "sort": 10,
@@ -193,7 +225,7 @@ def build_menu_tree_for_user(user) -> list[dict]:
                 {
                     "id": 211,
                     "code": "interference_datasets",
-                    "name": "数据中心",
+                    "name": "Datasets",
                     "path": "/dashboard/electromagnetic/interference/datasets",
                     "icon": "database",
                     "sort": 11,
@@ -206,7 +238,7 @@ def build_menu_tree_for_user(user) -> list[dict]:
                 {
                     "id": 212,
                     "code": "interference_tools",
-                    "name": "工具仓库",
+                    "name": "Tools",
                     "path": "/dashboard/electromagnetic/interference/tools",
                     "icon": "box",
                     "sort": 12,
@@ -219,7 +251,7 @@ def build_menu_tree_for_user(user) -> list[dict]:
                 {
                     "id": 213,
                     "code": "interference_hosts",
-                    "name": "主机管理",
+                    "name": "Hosts",
                     "path": "/dashboard/electromagnetic/interference/hosts",
                     "icon": "server",
                     "sort": 13,
@@ -232,7 +264,7 @@ def build_menu_tree_for_user(user) -> list[dict]:
                 {
                     "id": 214,
                     "code": "interference_commands",
-                    "name": "命令审计",
+                    "name": "Command Audit",
                     "path": "/dashboard/electromagnetic/interference/commands",
                     "icon": "terminal",
                     "sort": 14,
@@ -275,7 +307,7 @@ def build_menu_tree_for_user(user) -> list[dict]:
         {
             "id": 3,
             "code": "rf",
-            "name": "射频",
+            "name": "RF",
             "path": "/dashboard/rf",
             "icon": "radio",
             "sort": 30,

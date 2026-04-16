@@ -15,10 +15,5 @@ export async function GET() {
     );
   }
 
-  return NextResponse.json(
-    buildEnvelope(result.departments, {
-      message: "ok",
-    }),
-    { status: 200 },
-  );
+  return NextResponse.json(buildEnvelope(result.departments), { status: 200 });
 }

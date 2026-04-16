@@ -4,127 +4,230 @@ from django.db.models import Q
 from drf_spectacular.utils import extend_schema
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
-from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
 
-from apps.common.api import BaselineModelViewSet
-from apps.common.api_contract import BaselinePageNumberPagination, build_api_envelope
-from apps.common.permissions import StaffPermission
+from apps.common.api import BaselineAPIView, BaselineModelViewSet
+from apps.common.api_contract import BaselinePageNumberPagination
 
 from .admin_users_serializers import (
     AdminDepartmentOptionSerializer,
     AdminPasswordResetSerializer,
+    AdminRejectSerializer,
     AdminUserCreateSerializer,
-    AdminUserRowSerializer,
+    AdminUserDetailSerializer,
+    AdminUserListSerializer,
     AdminUserUpdateSerializer,
+    UserAuditLogSerializer,
     managed_department_queryset,
 )
-from .models import User
+from .models import User, UserAuditLog
+from .permissions import is_user_admin
+from .services import (
+    admin_reset_password,
+    approve_user,
+    create_user_by_admin,
+    disable_user,
+    enable_user,
+    reject_user,
+    soft_delete_user,
+    update_user_from_admin,
+)
+
+
+class AdminUserPermissionMixin:
+    permission_classes = [IsAuthenticated]
+
+    def check_permissions(self, request):
+        super().check_permissions(request)
+        if not is_user_admin(request.user):
+            self.permission_denied(request, message="Administrator access is required.")
 
 
 @extend_schema(tags=["Admin Users"])
-class AdminUserViewSet(BaselineModelViewSet):
-    """
-    企业用户管理（仅工作人员 / 管理员可访问）。
-    不提供物理删除，以禁用账号为主。
-    """
-
-    permission_classes = [IsAuthenticated, StaffPermission]
+class AdminUserViewSet(AdminUserPermissionMixin, BaselineModelViewSet):
     pagination_class = BaselinePageNumberPagination
-    http_method_names = ["get", "post", "patch", "head", "options"]
+    http_method_names = ["get", "post", "patch", "delete", "head", "options"]
 
     def get_queryset(self):
-        qs = User.objects.all().select_related("department").order_by("-date_joined")
+        qs = User.objects.filter(is_deleted=False).select_related(
+            "department",
+            "approved_by",
+            "created_by",
+        )
         q = self.request.query_params.get("q", "").strip()
         if q:
-            qs = qs.filter(Q(username__icontains=q) | Q(first_name__icontains=q))
-        dept = self.request.query_params.get("department", "").strip()
-        if dept:
-            qs = qs.filter(department__code=dept)
-        active = self.request.query_params.get("is_active", "").strip().lower()
-        if active in ("true", "false", "1", "0"):
-            qs = qs.filter(is_active=active in ("true", "1"))
+            qs = qs.filter(
+                Q(username__icontains=q)
+                | Q(real_name__icontains=q)
+                | Q(email__icontains=q)
+                | Q(phone__icontains=q)
+            )
+
+        status_value = self.request.query_params.get("status", "").strip().lower()
+        if status_value:
+            qs = qs.filter(approve_status=status_value)
+
         role = self.request.query_params.get("role", "").strip().lower()
-        if role == "admin":
-            qs = qs.filter(is_staff=True).exclude(is_superuser=True)
-        elif role == "user":
-            qs = qs.filter(is_staff=False, is_superuser=False)
-        elif role == "superuser":
-            qs = qs.filter(is_superuser=True)
-        return qs
+        if role:
+            qs = qs.filter(role=role)
+
+        department_code = self.request.query_params.get("department", "").strip()
+        if department_code:
+            qs = qs.filter(department__code=department_code)
+
+        pending_only = self.request.query_params.get("pending", "").strip().lower()
+        if pending_only in {"1", "true", "yes"}:
+            qs = qs.filter(approve_status=User.STATUS_PENDING)
+
+        return qs.order_by("-created_at", "-id")
+
+    def get_object(self):
+        obj = super().get_object()
+        if obj.is_deleted:
+            self.permission_denied(self.request, message="This user has been deleted.")
+        return obj
 
     def get_serializer_class(self):
         if self.action == "create":
             return AdminUserCreateSerializer
-        if self.action in ("partial_update", "update"):
+        if self.action in {"partial_update", "update"}:
             return AdminUserUpdateSerializer
-        return AdminUserRowSerializer
-
-    def get_object(self):
-        obj = super().get_object()
-        if obj.is_superuser and not self.request.user.is_superuser:
-            raise PermissionDenied("无权管理超级管理员账号。")
-        return obj
+        if self.action == "retrieve":
+            return AdminUserDetailSerializer
+        return AdminUserListSerializer
 
     def create(self, request, *args, **kwargs):
-        ser = AdminUserCreateSerializer(data=request.data)
-        ser.is_valid(raise_exception=True)
-        data = ser.validated_data
-        user = User(
-            username=data["username"],
-            first_name=(data.get("display_name") or "").strip(),
-            email="",
-            approve_status=User.APPROVE_APPROVED,
-            is_active=data.get("is_active", True),
-            is_staff=data["role"] == "admin",
-            is_superuser=False,
-            department=data.get("department"),
+        serializer = self.get_serializer(data=request.data, context={"request": request})
+        serializer.is_valid(raise_exception=True)
+        user, temporary_password = create_user_by_admin(
+            operator=request.user,
+            data=serializer.validated_data,
+            request=request,
         )
-        user.set_password(data["password"])
-        user.save()
-        return Response(
-            build_api_envelope(
-                data=AdminUserRowSerializer(user).data,
-                code="created",
-                message="用户已创建。",
-            ),
-            status=status.HTTP_201_CREATED,
+        data = AdminUserDetailSerializer(user).data
+        if temporary_password:
+            data = {**data, "temporary_password": temporary_password}
+        return self.success_response(
+            data=data,
+            code="created",
+            message="User created successfully.",
+            status_code=status.HTTP_201_CREATED,
         )
 
     def partial_update(self, request, *args, **kwargs):
         instance = self.get_object()
-        ser = AdminUserUpdateSerializer(
+        serializer = self.get_serializer(
             data=request.data,
             partial=True,
             context={"request": request, "instance": instance},
         )
-        ser.is_valid(raise_exception=True)
-        ser.update(instance, ser.validated_data)
-        instance.refresh_from_db()
+        serializer.is_valid(raise_exception=True)
+        user = update_user_from_admin(
+            target=instance,
+            operator=request.user,
+            data=serializer.validated_data,
+            request=request,
+        )
         return self.success_response(
-            data=AdminUserRowSerializer(instance).data,
+            data=AdminUserDetailSerializer(user).data,
             code="updated",
-            message="用户信息已更新。",
+            message="User updated successfully.",
         )
 
-    @extend_schema(tags=["Admin Users"])
-    @action(detail=False, methods=["get"], url_path="department_options")
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        soft_delete_user(target=instance, operator=request.user, request=request)
+        return self.success_response(code="deleted", message="User deleted successfully.")
+
+    @action(detail=False, methods=["get"], url_path="department-options")
     def department_options(self, request):
         qs = managed_department_queryset()
         return self.success_response(
-            data=AdminDepartmentOptionSerializer(qs, many=True).data,
+            data=AdminDepartmentOptionSerializer(qs, many=True).data
         )
 
-    @extend_schema(tags=["Admin Users"])
-    @action(detail=True, methods=["post"], url_path="reset_password")
-    def reset_password(self, request, pk=None):
-        user = self.get_object()
-        ser = AdminPasswordResetSerializer(data=request.data)
-        ser.is_valid(raise_exception=True)
-        user.set_password(ser.validated_data["password"])
-        user.save(update_fields=["password"])
+    @action(detail=True, methods=["post"], url_path="approve")
+    def approve(self, request, pk=None):
+        user = approve_user(target=self.get_object(), operator=request.user, request=request)
         return self.success_response(
-            code="updated",
-            message="密码已重置。",
+            data=AdminUserDetailSerializer(user).data,
+            message="User approved successfully.",
         )
+
+    @action(detail=True, methods=["post"], url_path="reject")
+    def reject(self, request, pk=None):
+        serializer = AdminRejectSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = reject_user(
+            target=self.get_object(),
+            operator=request.user,
+            reason=serializer.validated_data["reason"],
+            request=request,
+        )
+        return self.success_response(
+            data=AdminUserDetailSerializer(user).data,
+            message="User rejected successfully.",
+        )
+
+    @action(detail=True, methods=["post"], url_path="reset-password")
+    def reset_password(self, request, pk=None):
+        serializer = AdminPasswordResetSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        temporary_password = admin_reset_password(
+            target=self.get_object(),
+            operator=request.user,
+            request=request,
+            new_password=serializer.validated_data.get("new_password") or None,
+        )
+        return self.success_response(
+            data={"temporary_password": temporary_password},
+            message="Password reset successfully.",
+        )
+
+    @action(detail=True, methods=["post"], url_path="enable")
+    def enable(self, request, pk=None):
+        user = enable_user(target=self.get_object(), operator=request.user, request=request)
+        return self.success_response(
+            data=AdminUserDetailSerializer(user).data,
+            message="User enabled successfully.",
+        )
+
+    @action(detail=True, methods=["post"], url_path="disable")
+    def disable(self, request, pk=None):
+        user = disable_user(target=self.get_object(), operator=request.user, request=request)
+        return self.success_response(
+            data=AdminUserDetailSerializer(user).data,
+            message="User disabled successfully.",
+        )
+
+
+class UserAuditLogListAPIView(AdminUserPermissionMixin, BaselineAPIView):
+    pagination_class = BaselinePageNumberPagination
+
+    @extend_schema(tags=["Admin Users"])
+    def get(self, request):
+        queryset = UserAuditLog.objects.select_related("user", "operator").all()
+        action = request.query_params.get("action", "").strip()
+        if action:
+            queryset = queryset.filter(action=action)
+
+        user_id = request.query_params.get("user", "").strip()
+        if user_id.isdigit():
+            queryset = queryset.filter(user_id=int(user_id))
+
+        operator_id = request.query_params.get("operator", "").strip()
+        if operator_id.isdigit():
+            queryset = queryset.filter(operator_id=int(operator_id))
+
+        keyword = request.query_params.get("q", "").strip()
+        if keyword:
+            queryset = queryset.filter(
+                Q(user__username__icontains=keyword)
+                | Q(operator__username__icontains=keyword)
+                | Q(action__icontains=keyword)
+            )
+
+        paginator = self.pagination_class()
+        page = paginator.paginate_queryset(queryset.order_by("-created_at", "-id"), request)
+        serializer = UserAuditLogSerializer(page, many=True)
+        return paginator.get_paginated_response(serializer.data)

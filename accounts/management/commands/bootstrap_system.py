@@ -1,12 +1,15 @@
+from __future__ import annotations
+
 from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
 
 from accounts.models import Department
+from apps.projects.management.commands.seed_project_demo import Command as SeedProjectDemoCommand
 
 
 DEPARTMENT_SEEDS = [
     {
-        "name": "电磁",
+        "name": "Electromagnetic",
         "code": "electromagnetic",
         "department_type": Department.TYPE_DIVISION,
         "page_path": "/dashboard/electromagnetic",
@@ -14,7 +17,7 @@ DEPARTMENT_SEEDS = [
         "parent_code": None,
     },
     {
-        "name": "射频",
+        "name": "RF",
         "code": "rf",
         "department_type": Department.TYPE_DIVISION,
         "page_path": "/dashboard/rf",
@@ -22,7 +25,7 @@ DEPARTMENT_SEEDS = [
         "parent_code": None,
     },
     {
-        "name": "干扰",
+        "name": "Interference",
         "code": "interference",
         "department_type": Department.TYPE_DEPARTMENT,
         "page_path": "/dashboard/electromagnetic/interference",
@@ -47,32 +50,35 @@ DEPARTMENT_SEEDS = [
     },
 ]
 
-
-# 与部门 code 对应的演示业务用户（已审批，非 staff，用于按部门登录联调）
 DEPARTMENT_DEMO_USERS = [
-    {"username": "interference", "department_code": "interference", "note": "电磁 / 干扰"},
-    {"username": "rse_user", "department_code": "rse", "note": "电磁 / RSE"},
-    {"username": "emc_user", "department_code": "emc", "note": "电磁 / EMC"},
-    {"username": "rf_user", "department_code": "rf", "note": "射频"},
+    {"username": "interference", "department_code": "interference", "note": "Electromagnetic / Interference"},
+    {"username": "rse_user", "department_code": "rse", "note": "Electromagnetic / RSE"},
+    {"username": "emc_user", "department_code": "emc", "note": "Electromagnetic / EMC"},
+    {"username": "rf_user", "department_code": "rf", "note": "RF"},
 ]
 
 
 class Command(BaseCommand):
-    help = "Create default departments, admin, and per-department demo users."
+    help = "Create default departments, admin account, demo users, and project demo data."
 
     def add_arguments(self, parser):
         parser.add_argument("--admin-username", default="admin")
         parser.add_argument("--admin-password", default="admin123")
-        parser.add_argument("--company-name", default="公司管理系统")
+        parser.add_argument("--company-name", default="Interference Management System")
         parser.add_argument(
             "--demo-user-password",
             default="Demo123456",
-            help="演示业务用户统一登录密码（不少于 8 位）。",
+            help="Shared password for department demo users.",
         )
         parser.add_argument(
             "--skip-demo-users",
             action="store_true",
-            help="不创建/更新各部门演示用户。",
+            help="Skip creating or updating department demo users.",
+        )
+        parser.add_argument(
+            "--skip-project-demo",
+            action="store_true",
+            help="Skip seeding the project management demo data.",
         )
 
     def handle(self, *args, **options):
@@ -91,6 +97,9 @@ class Command(BaseCommand):
                 password=options["demo_user_password"],
             )
 
+        if not options["skip_project_demo"]:
+            SeedProjectDemoCommand().handle(reset=False)
+
         self.stdout.write(
             self.style.SUCCESS(
                 f"Initialization completed. Admin user: {admin_user.username}"
@@ -98,20 +107,14 @@ class Command(BaseCommand):
         )
         if not options["skip_demo_users"]:
             pwd = options["demo_user_password"]
-            self.stdout.write("各部门演示用户（密码相同）:")
+            self.stdout.write("Department demo users:")
             for row in DEPARTMENT_DEMO_USERS:
-                self.stdout.write(
-                    f"  - {row['username']:12} → {row['note']} （密码 {pwd}）"
-                )
+                self.stdout.write(f"  - {row['username']:12} -> {row['note']} (password: {pwd})")
 
-    def _bootstrap_departments(self):
+    def _bootstrap_departments(self) -> dict[str, Department]:
         department_map: dict[str, Department] = {}
         for seed in DEPARTMENT_SEEDS:
-            parent = None
-            parent_code = seed["parent_code"]
-            if parent_code:
-                parent = department_map[parent_code]
-
+            parent = department_map.get(seed["parent_code"]) if seed["parent_code"] else None
             department, _ = Department.objects.update_or_create(
                 code=seed["code"],
                 defaults={
@@ -130,17 +133,15 @@ class Command(BaseCommand):
         user_model = get_user_model()
         admin_user, created = user_model.objects.get_or_create(
             username=username,
-            defaults={
-                "email": "",
-            },
+            defaults={"email": None},
         )
-
-        admin_user.is_superuser = True
-        admin_user.is_staff = True
+        admin_user.role = user_model.ROLE_SUPER_ADMIN
         admin_user.is_active = True
         admin_user.company = company_name
-        admin_user.approve_status = user_model.APPROVE_APPROVED
+        admin_user.approve_status = user_model.STATUS_APPROVED
         admin_user.department = department
+        admin_user.real_name = admin_user.real_name or "System Administrator"
+        admin_user.must_change_password = False
         admin_user.set_password(password)
         admin_user.save()
 
@@ -154,12 +155,12 @@ class Command(BaseCommand):
         department_map: dict[str, Department],
         company_name: str,
         password: str,
-    ):
+    ) -> None:
         user_model = get_user_model()
         if len(password) < 8:
             self.stdout.write(
                 self.style.WARNING(
-                    "演示用户密码不足 8 位，已跳过创建。请使用 --demo-user-password 指定更长密码。"
+                    "Demo user password must be at least 8 characters long. Skipping demo users."
                 )
             )
             return
@@ -170,20 +171,17 @@ class Command(BaseCommand):
                 continue
             user, created = user_model.objects.get_or_create(
                 username=row["username"],
-                defaults={"email": ""},
+                defaults={"email": None},
             )
-            user.is_superuser = False
-            user.is_staff = False
+            user.role = user_model.ROLE_USER
             user.is_active = True
             user.company = company_name
-            user.approve_status = user_model.APPROVE_APPROVED
+            user.approve_status = user_model.STATUS_APPROVED
             user.department = dept
+            user.real_name = user.real_name or row["username"]
+            user.must_change_password = False
             user.set_password(password)
             user.save()
 
             action = "created" if created else "updated"
-            self.stdout.write(
-                self.style.SUCCESS(
-                    f"Dept demo user {action}: {row['username']} → {dept.name}"
-                )
-            )
+            self.stdout.write(self.style.SUCCESS(f"Dept demo user {action}: {row['username']} -> {dept.name}"))

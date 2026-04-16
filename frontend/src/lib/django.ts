@@ -44,6 +44,10 @@ type RegisterPublicResult =
   | { ok: true; message: string; username: string }
   | { ok: false; status: number; code: string; message: string };
 
+type GenericPublicResult =
+  | { ok: true; message: string }
+  | { ok: false; status: number; code: string; message: string };
+
 type RegistrationDepartmentsResult =
   | { ok: true; departments: RegistrationDepartmentOption[] }
   | { ok: false; status: number; code: string; message: string };
@@ -190,7 +194,7 @@ export async function loginWithPassword(
 ): Promise<LoginResult> {
   try {
     const { response, payload } = await fetchBackendEnvelope<TokenPayload>(
-      "/api/v1/auth/token/",
+      "/api/v1/auth/login/",
       {
         method: "POST",
         body: JSON.stringify({ username, password }),
@@ -283,6 +287,86 @@ export async function registerPublicAccount(
       ok: true,
       message: payload.message,
       username: payload.data.username,
+    };
+  } catch {
+    return {
+      ok: false,
+      status: 502,
+      code: "backend_unavailable",
+      message: DEFAULT_ERROR_MESSAGE,
+    };
+  }
+}
+
+export async function requestPublicPasswordReset(
+  body: Record<string, unknown>,
+): Promise<GenericPublicResult> {
+  try {
+    const { response, payload } = await fetchBackendEnvelope<null>(
+      "/api/v1/auth/forgot-password/",
+      {
+        method: "POST",
+        body: JSON.stringify(body),
+      },
+    );
+
+    if (!response.ok || !payload?.success) {
+      return {
+        ok: false,
+        status: response.status,
+        code: payload?.code ?? "forgot_password_failed",
+        message:
+          extractErrorMessage(payload) ??
+          describeUnexpectedBackendResponse(
+            response,
+            "Unable to request a password reset.",
+          ),
+      };
+    }
+
+    return {
+      ok: true,
+      message: payload.message,
+    };
+  } catch {
+    return {
+      ok: false,
+      status: 502,
+      code: "backend_unavailable",
+      message: DEFAULT_ERROR_MESSAGE,
+    };
+  }
+}
+
+export async function confirmPublicPasswordReset(
+  body: Record<string, unknown>,
+): Promise<GenericPublicResult> {
+  try {
+    const { response, payload } = await fetchBackendEnvelope<null>(
+      "/api/v1/auth/reset-password/confirm/",
+      {
+        method: "POST",
+        body: JSON.stringify(body),
+      },
+    );
+
+    if (!response.ok || !payload?.success) {
+      return {
+        ok: false,
+        status: response.status,
+        code: payload?.code ?? "reset_password_failed",
+        message:
+          extractErrorMessage(payload) ??
+          describeUnexpectedBackendResponse(
+            response,
+            "Unable to reset the password.",
+          ),
+      };
+    }
+
+    return {
+      ok: true,
+      message: payload.message,
     };
   } catch {
     return {

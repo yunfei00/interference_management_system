@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "drf_spectacular",
     "apps.common.apps.CommonConfig",
+    "apps.projects.apps.ProjectsConfig",
     "accounts.apps.AccountsConfig",
     "datahub.apps.DatahubConfig",
     "tool_management_project.apps.ToolManagementProjectConfig",
@@ -153,6 +154,13 @@ MEDIA_ROOT.mkdir(parents=True, exist_ok=True)
 LOG_DIR = Path(env("LOG_DIR", default=str(BASE_DIR / "logs")))
 LOG_DIR.mkdir(parents=True, exist_ok=True)
 
+FRONTEND_APP_URL = env("FRONTEND_APP_URL", default="http://localhost:3000")
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="noreply@interference.local")
+PASSWORD_RESET_TOKEN_TTL_HOURS = env.int(
+    "PASSWORD_RESET_TOKEN_TTL_HOURS",
+    default=2,
+)
+
 if DEBUG:
     staticfiles_backend = "django.contrib.staticfiles.storage.StaticFilesStorage"
 else:
@@ -222,6 +230,10 @@ SPECTACULAR_SETTINGS = {
         {
             "name": "Authentication",
             "description": "JWT login, current-user, and menu endpoints.",
+        },
+        {
+            "name": "Projects",
+            "description": "Project management, tasks, milestones, attachments, and activity APIs.",
         },
         {
             "name": "Datahub",
@@ -325,6 +337,11 @@ LOGGING = {
             "propagate": False,
         },
         "accounts": {
+            "handlers": ["console", "application_file"],
+            "level": "DEBUG" if DEBUG else "INFO",
+            "propagate": False,
+        },
+        "apps.projects": {
             "handlers": ["console", "application_file"],
             "level": "DEBUG" if DEBUG else "INFO",
             "propagate": False,

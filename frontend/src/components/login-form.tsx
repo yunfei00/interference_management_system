@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import type { Route } from "next";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -11,7 +12,6 @@ import { APP_NAME } from "@/lib/public-config";
 import styles from "./login-form.module.css";
 
 type LoginFormProps = {
-  /** 嵌入门户时使用更紧凑的文案与布局 */
   embedded?: boolean;
   onSwitchToRegister?: () => void;
 };
@@ -31,7 +31,7 @@ export function LoginForm({ embedded = false, onSwitchToRegister }: LoginFormPro
     const password = String(formData.get("password") ?? "");
 
     if (!username || !password) {
-      setError("请输入账号和密码。");
+      setError("Please enter your username and password.");
       return;
     }
 
@@ -59,9 +59,9 @@ export function LoginForm({ embedded = false, onSwitchToRegister }: LoginFormPro
         router.push(target);
         router.refresh();
       });
-    } catch (error) {
-      console.warn("[auth][login] 浏览器请求异常:", error);
-      setError("当前认证网关暂时无法连接后端，请稍后重试。");
+    } catch (submitError) {
+      console.warn("[auth][login] request failed", submitError);
+      setError("The authentication gateway is temporarily unavailable. Please try again.");
     }
   }
 
@@ -69,20 +69,18 @@ export function LoginForm({ embedded = false, onSwitchToRegister }: LoginFormPro
     <section className={`surface ${styles.card}`}>
       <div className={styles.header}>
         <div className={styles.headerTop}>
-          <div className="eyebrow">统一登录</div>
+          <div className="eyebrow">Unified Login</div>
           <div className={styles.secureBadge}>
             <span className={styles.secureDot} />
-            受控访问
+            Controlled Access
           </div>
         </div>
 
         <h1 className={styles.title}>
-          {embedded ? "登录" : `登录到 ${APP_NAME}`}
+          {embedded ? "Sign In" : `Sign In to ${APP_NAME}`}
         </h1>
         <p className={styles.subtitle}>
-          {embedded
-            ? "使用已开通的企业账号登录。"
-            : "使用企业账号完成身份认证。系统会结合审批状态与所属部门，自动分配可见页面与工作区权限。"}
+          Use your enterprise account to enter the system. Approval status and role-based permissions are enforced by the backend.
         </p>
       </div>
 
@@ -91,46 +89,55 @@ export function LoginForm({ embedded = false, onSwitchToRegister }: LoginFormPro
       <form className={styles.form} onSubmit={handleSubmit}>
         <label className={styles.field}>
           <div className={styles.labelRow}>
-            <span className={styles.label}>账号</span>
-            <span className={styles.fieldHint}>企业用户名</span>
+            <span className={styles.label}>Username or Email</span>
+            <span className={styles.fieldHint}>Required</span>
           </div>
           <input
             autoComplete="username"
             className={styles.input}
             name="username"
-            placeholder="请输入账号"
+            placeholder="Enter your username or email"
             type="text"
           />
         </label>
 
         <label className={styles.field}>
           <div className={styles.labelRow}>
-            <span className={styles.label}>密码</span>
-            <span className={styles.fieldHint}>受控登录口令</span>
+            <span className={styles.label}>Password</span>
+            <span className={styles.fieldHint}>Required</span>
           </div>
           <input
             autoComplete="current-password"
             className={styles.input}
             name="password"
-            placeholder="请输入密码"
+            placeholder="Enter your password"
             type="password"
           />
         </label>
 
         <button className={styles.submitButton} disabled={isPending} type="submit">
-          {isPending ? "登录中..." : embedded ? "登录" : "登录平台"}
+          {isPending ? "Signing In..." : embedded ? "Sign In" : "Open Workspace"}
         </button>
       </form>
 
+      <div className={styles.footer}>
+        <p>
+          Need help with your password?
+          <Link className={styles.inlineLink} href="/forgot-password">
+            Reset it
+          </Link>
+        </p>
+      </div>
+
       {embedded && onSwitchToRegister ? (
         <div className={styles.embeddedSwitch}>
-          <span className={styles.embeddedSwitchText}>还没有企业账号？</span>
+          <span className={styles.embeddedSwitchText}>Need an account?</span>
           <button
             className={styles.inlineLink}
             onClick={onSwitchToRegister}
             type="button"
           >
-            注册账号
+            Register
           </button>
         </div>
       ) : null}
@@ -138,14 +145,19 @@ export function LoginForm({ embedded = false, onSwitchToRegister }: LoginFormPro
       {embedded === false ? (
         <>
           <div className={styles.ruleList}>
-            <div className={styles.ruleItem}>审批通过后才会开通业务工作台访问权限</div>
-            <div className={styles.ruleItem}>登录后自动匹配电磁 / 射频及子部门可见页面</div>
-            <div className={styles.ruleItem}>首次启用管理员账号后请及时修改密码并完善部门信息</div>
+            <div className={styles.ruleItem}>
+              Newly registered users stay in pending review until an administrator approves them.
+            </div>
+            <div className={styles.ruleItem}>
+              Rejected or disabled accounts are blocked by backend policy, not by client-side hiding.
+            </div>
+            <div className={styles.ruleItem}>
+              If an administrator resets your password, you must update it after your next login.
+            </div>
           </div>
 
           <div className={styles.footer}>
-            <p>如果账号尚未开通，请先完成注册审批或联系管理员处理。</p>
-            <p>当前登录页用于企业统一身份认证，不再展示技术迁移说明。</p>
+            <p>If your account has not been created yet, register first and wait for approval.</p>
           </div>
         </>
       ) : null}
@@ -157,6 +169,10 @@ function resolvePostLoginPath(
   nextPath: string | null,
   user: AuthUser | undefined,
 ): Route {
+  if (user?.must_change_password) {
+    return "/dashboard/change-password";
+  }
+
   const raw = nextPath?.trim() ?? "";
   if (
     raw.startsWith("/") &&
@@ -172,10 +188,6 @@ function resolvePostLoginPath(
     return home as Route;
   }
 
-  if (user?.is_staff || user?.is_superuser) {
-    return "/dashboard";
-  }
-
   return "/dashboard";
 }
 
@@ -185,28 +197,32 @@ function resolveLoginError(code: string, fallbackMessage: string) {
     code === "no_active_account" ||
     code === "login_failed"
   ) {
-    return "账号或密码错误。";
+    return "The username or password is incorrect.";
   }
 
   if (code === "missing_credentials") {
-    return "请输入账号和密码。";
+    return "Please enter your username and password.";
   }
 
   if (code === "invalid_json") {
-    return "登录请求格式不正确。";
+    return "The login request format is invalid.";
   }
 
   if (code === "backend_unavailable") {
-    return "认证网关暂时无法连接后端。";
+    return "The authentication gateway is temporarily unavailable.";
   }
 
-  if (code === "not_approved") {
-    return "当前账号尚未通过审批，暂时无法登录。";
+  if (code === "account_pending") {
+    return "Your account is still pending approval.";
+  }
+
+  if (code === "account_rejected") {
+    return "Your account was rejected. Please contact an administrator.";
   }
 
   if (code === "account_disabled") {
-    return "该账号已被禁用，请联系管理员。";
+    return "This account has been disabled. Please contact an administrator.";
   }
 
-  return fallbackMessage || "登录失败，请稍后重试。";
+  return fallbackMessage || "Login failed. Please try again.";
 }

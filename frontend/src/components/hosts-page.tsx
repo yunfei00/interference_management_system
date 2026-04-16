@@ -10,6 +10,7 @@ import { usePaginatedResource } from "@/lib/use-paginated-resource";
 
 import { DepartmentAccessGuard } from "./department-access-guard";
 import { useDashboardSession } from "./dashboard-session-provider";
+import hostStyles from "./hosts-page.module.css";
 import { InterferenceWorkspaceBanner } from "./interference-workspace-banner";
 import styles from "./management-page.module.css";
 
@@ -112,7 +113,7 @@ export function HostsPage() {
       requiredPermissions={HOSTS_ACCESS}
       title="无法访问主机管理"
     >
-    <section className={styles.content}>
+    <section className={`${styles.content} ${hostStyles.hostsContent}`}>
       <div className={styles.stack}>
         <InterferenceWorkspaceBanner
           description="主机资产和远程命令能力目前都归属在电磁 / 干扰工作区，后面如果其他部门需要再拆分独立主机池。"
@@ -129,7 +130,7 @@ export function HostsPage() {
             </div>
           </div>
 
-          <div className={styles.filters}>
+          <div className={`${styles.filters} ${hostStyles.hostFilters}`}>
             <label className={styles.field}>
               <span className={styles.label}>搜索</span>
               <input
@@ -160,8 +161,8 @@ export function HostsPage() {
           </div>
 
           {hostsState.kind === "ready" && hostsState.data.items.length ? (
-            <div className={styles.tableWrap}>
-              <table className={styles.table}>
+            <div className={`${styles.tableWrap} ${hostStyles.hostTableWrap}`}>
+              <table className={`${styles.table} ${hostStyles.hostTable}`}>
                 <thead>
                   <tr>
                     <th>主机</th>
@@ -173,9 +174,11 @@ export function HostsPage() {
                 <tbody>
                   {hostsState.data.items.map((host) => (
                     <tr
+                      className={
+                        String(host.id) === selectedHostId ? hostStyles.rowSelected : undefined
+                      }
                       key={host.id}
                       onClick={() => setSelectedHostId(String(host.id))}
-                      style={{ cursor: "pointer" }}
                     >
                       <td>
                         <div className={styles.primaryCell}>
@@ -244,7 +247,7 @@ export function HostsPage() {
         </section>
       </div>
 
-      <aside className={styles.stack}>
+      <aside className={`${styles.stack} ${hostStyles.hostsAside}`}>
         {isStaff ? (
           <>
             <section className={`surface ${styles.panel}`}>
@@ -254,7 +257,7 @@ export function HostsPage() {
                   <p className={styles.panelText}>适合先把现有 Agent 主机纳入新的工作台管理。</p>
                 </div>
               </div>
-              <div className={styles.filters}>
+              <div className={hostStyles.sideFormGrid}>
                 <label className={styles.field}>
                   <span className={styles.label}>主机名称</span>
                   <input className={styles.input} onChange={(event) => setName(event.target.value)} value={name} />
@@ -278,7 +281,7 @@ export function HostsPage() {
                 <div className={styles.field}>
                   <span className={styles.label}>保存</span>
                   <button
-                    className="button"
+                    className={`button ${hostStyles.actionButton}`}
                     onClick={() =>
                       startTransition(() => {
                         void createHost();
@@ -299,7 +302,7 @@ export function HostsPage() {
                   <p className={styles.panelText}>当前先提供单机命令入口，批量执行后续继续补齐。</p>
                 </div>
               </div>
-              <div className={styles.filters}>
+              <div className={hostStyles.sideFormGrid}>
                 <label className={styles.field}>
                   <span className={styles.label}>主机 ID</span>
                   <input
@@ -334,7 +337,7 @@ export function HostsPage() {
                 <div className={styles.field}>
                   <span className={styles.label}>执行</span>
                   <button
-                    className="button"
+                    className={`button ${hostStyles.actionButton}`}
                     onClick={() =>
                       startTransition(() => {
                         void runCommand();
@@ -346,7 +349,7 @@ export function HostsPage() {
                   </button>
                 </div>
               </div>
-              {feedback ? <div className={styles.empty}>{feedback}</div> : null}
+              {feedback ? <div className={hostStyles.feedback}>{feedback}</div> : null}
             </section>
           </>
         ) : (

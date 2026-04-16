@@ -1,0 +1,105 @@
+.hostsContent {
+  grid-template-columns: minmax(0, 1fr) minmax(20.5rem, 23.5rem);
+  gap: 1.25rem;
+}
+
+.hostsAside {
+  position: sticky;
+  top: 0.85rem;
+  align-self: start;
+}
+
+.hostFilters {
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 0.75fr);
+  align-items: end;
+  margin-bottom: 0.35rem;
+  padding-bottom: 0.95rem;
+  border-bottom: 1px solid rgba(22, 50, 63, 0.08);
+}
+
+.sideFormGrid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.actionButton {
+  width: 100%;
+  justify-content: center;
+}
+
+.feedback {
+  margin-top: 0.15rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(36, 122, 116, 0.2);
+  background: rgba(36, 122, 116, 0.08);
+  color: #0c5a44;
+  padding: 0.75rem 0.85rem;
+  line-height: 1.5;
+  font-size: 0.86rem;
+}
+
+.rowSelected {
+  background: linear-gradient(90deg, rgba(36, 122, 116, 0.08), rgba(36, 122, 116, 0.02));
+}
+
+.rowSelected td:first-child {
+  box-shadow: inset 3px 0 0 rgba(36, 122, 116, 0.65);
+}
+
+.rowSelected,
+.rowSelected td {
+  cursor: pointer;
+}
+
+.hostTableWrap {
+  margin-top: 0.25rem;
+}
+
+.hostTable {
+  min-width: 46rem;
+}
+
+.hostTable thead th {
+  background: #fff;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.hostTable tbody tr:nth-child(even) {
+  background: rgba(22, 50, 63, 0.02);
+}
+
+.hostTable tbody tr:hover {
+  background: rgba(36, 122, 116, 0.06);
+}
+
+.hostTable td {
+  padding-top: 0.86rem;
+  padding-bottom: 0.86rem;
+}
+
+@media (max-width: 1250px) {
+  .hostsContent {
+    grid-template-columns: minmax(0, 1fr) minmax(18.5rem, 21rem);
+  }
+}
+
+@media (max-width: 1100px) {
+  .hostsContent {
+    grid-template-columns: 1fr;
+  }
+
+  .hostsAside {
+    position: static;
+  }
+}
+
+@media (max-width: 900px) {
+  .hostFilters {
+    grid-template-columns: 1fr;
+    margin-bottom: 0.15rem;
+    padding-bottom: 0.75rem;
+  }
+}

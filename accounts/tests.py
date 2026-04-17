@@ -185,6 +185,54 @@ class AuthAndAdminApiTests(APITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
+    def test_admin_can_manage_departments(self):
+        create_response = self.client.post(
+            "/api/admin/departments/",
+            {
+                "name": "Radar",
+                "code": "radar",
+                "department_type": Department.TYPE_DEPARTMENT,
+                "page_path": "/dashboard/rf/radar",
+                "sort": 20,
+                "is_active": True,
+            },
+            format="json",
+            **self._auth_headers_for(self.admin),
+        )
+        self.assertEqual(create_response.status_code, status.HTTP_201_CREATED)
+
+        department_id = create_response.json()["data"]["id"]
+        list_response = self.client.get(
+            "/api/admin/departments/",
+            format="json",
+            **self._auth_headers_for(self.admin),
+        )
+        self.assertEqual(list_response.status_code, status.HTTP_200_OK)
+        self.assertTrue(
+            any(
+                item["id"] == department_id
+                for item in list_response.json()["data"]["items"]
+            )
+        )
+
+        disable_response = self.client.patch(
+            f"/api/admin/departments/{department_id}/",
+            {"is_active": False},
+            format="json",
+            **self._auth_headers_for(self.admin),
+        )
+        self.assertEqual(disable_response.status_code, status.HTTP_200_OK)
+
+        options_response = self.client.get(
+            "/api/admin/users/department-options/",
+            format="json",
+            **self._auth_headers_for(self.admin),
+        )
+        self.assertEqual(options_response.status_code, status.HTTP_200_OK)
+        self.assertFalse(
+            any(item["code"] == "radar" for item in options_response.json()["data"])
+        )
+
     def test_forgot_password_and_confirm_reset_do_not_leak_account_existence(self):
         forgot_response = self.client.post(
             "/api/auth/forgot-password/",

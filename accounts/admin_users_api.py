@@ -10,6 +10,7 @@ from apps.common.api import BaselineAPIView, BaselineModelViewSet
 from apps.common.api_contract import BaselinePageNumberPagination
 
 from .admin_users_serializers import (
+    AdminDepartmentSerializer,
     AdminDepartmentOptionSerializer,
     AdminPasswordResetSerializer,
     AdminRejectSerializer,
@@ -20,7 +21,7 @@ from .admin_users_serializers import (
     UserAuditLogSerializer,
     managed_department_queryset,
 )
-from .models import User, UserAuditLog
+from .models import Department, User, UserAuditLog
 from .permissions import is_user_admin
 from .services import (
     admin_reset_password,
@@ -231,3 +232,23 @@ class UserAuditLogListAPIView(AdminUserPermissionMixin, BaselineAPIView):
         page = paginator.paginate_queryset(queryset.order_by("-created_at", "-id"), request)
         serializer = UserAuditLogSerializer(page, many=True)
         return paginator.get_paginated_response(serializer.data)
+
+
+@extend_schema(tags=["Admin Users"])
+class AdminDepartmentViewSet(AdminUserPermissionMixin, BaselineModelViewSet):
+    pagination_class = BaselinePageNumberPagination
+    queryset = Department.objects.select_related("parent").all().order_by("sort", "id")
+    serializer_class = AdminDepartmentSerializer
+    http_method_names = ["get", "post", "patch", "head", "options"]
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        keyword = self.request.query_params.get("q", "").strip()
+        if keyword:
+            qs = qs.filter(Q(name__icontains=keyword) | Q(code__icontains=keyword))
+        active = self.request.query_params.get("active", "").strip().lower()
+        if active in {"1", "true", "yes"}:
+            qs = qs.filter(is_active=True)
+        if active in {"0", "false", "no"}:
+            qs = qs.filter(is_active=False)
+        return qs

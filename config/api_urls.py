@@ -8,7 +8,11 @@ from drf_spectacular.views import (
 )
 from rest_framework import routers
 
-from accounts.admin_users_api import AdminUserViewSet, UserAuditLogListAPIView
+from accounts.admin_users_api import (
+    AdminDepartmentViewSet,
+    AdminUserViewSet,
+    UserAuditLogListAPIView,
+)
 from accounts.api_auth import (
     BaselineTokenRefreshView,
     ChangePasswordAPIView,
@@ -35,12 +39,14 @@ def build_v1_router():
     router.register("hosts", HostViewSet, basename="host")
     router.register("commands", CommandTaskViewSet, basename="command")
     router.register("admin/users", AdminUserViewSet, basename="admin_user_v1")
+    router.register("admin/departments", AdminDepartmentViewSet, basename="admin_department_v1")
     return router
 
 
 def build_unversioned_router():
     router = routers.DefaultRouter()
     router.register("admin/users", AdminUserViewSet, basename="admin_user")
+    router.register("admin/departments", AdminDepartmentViewSet, basename="admin_department")
     return router
 
 

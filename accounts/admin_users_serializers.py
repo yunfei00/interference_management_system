@@ -6,12 +6,8 @@ from .models import Department, User, UserAuditLog
 from .serializers import UserSerializer
 from .services import get_user_role, validate_new_password
 
-MANAGED_DEPARTMENT_CODES = ("interference", "rse", "emc", "rf")
-
-
 def managed_department_queryset():
     return Department.objects.filter(
-        code__in=MANAGED_DEPARTMENT_CODES,
         is_active=True,
         department_type=Department.TYPE_DEPARTMENT,
     ).order_by("sort", "id")
@@ -26,6 +22,51 @@ class AdminDepartmentOptionSerializer(serializers.ModelSerializer):
 
     def get_full_name(self, obj: Department) -> str:
         return obj.full_name
+
+
+class AdminDepartmentSerializer(serializers.ModelSerializer):
+    full_name = serializers.SerializerMethodField()
+    parent_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Department
+        fields = [
+            "id",
+            "name",
+            "code",
+            "department_type",
+            "parent",
+            "parent_name",
+            "page_path",
+            "sort",
+            "is_active",
+            "full_name",
+        ]
+        read_only_fields = ["id", "full_name", "parent_name"]
+
+    def get_full_name(self, obj: Department) -> str:
+        return obj.full_name
+
+    def get_parent_name(self, obj: Department) -> str | None:
+        return obj.parent.full_name if obj.parent else None
+
+    def validate_code(self, value: str) -> str:
+        cleaned = (value or "").strip().lower()
+        if not cleaned:
+            raise serializers.ValidationError("Department code cannot be empty.")
+        instance: Department | None = getattr(self, "instance", None)
+        queryset = Department.objects.filter(code=cleaned)
+        if instance is not None:
+            queryset = queryset.exclude(pk=instance.pk)
+        if queryset.exists():
+            raise serializers.ValidationError("This department code is already in use.")
+        return cleaned
+
+    def validate_name(self, value: str) -> str:
+        cleaned = (value or "").strip()
+        if not cleaned:
+            raise serializers.ValidationError("Department name cannot be empty.")
+        return cleaned
 
 
 class AdminUserListSerializer(UserSerializer):

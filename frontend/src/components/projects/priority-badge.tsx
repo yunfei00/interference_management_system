@@ -1,11 +1,13 @@
 "use client";
 
+import { useTranslations } from "next-intl";
+
 import type { ProjectPriority, TaskPriority } from "@/lib/contracts";
 
 import styles from "./projects.module.css";
 import {
-  PROJECT_PRIORITY_LABELS,
-  TASK_PRIORITY_LABELS,
+  getProjectPriorityLabel,
+  getTaskPriorityLabel,
 } from "./project-utils";
 
 type PriorityBadgeProps =
@@ -24,10 +26,11 @@ function classNameFor(value: string) {
 }
 
 export function PriorityBadge(props: PriorityBadgeProps) {
+  const t = useTranslations();
   const label =
     props.kind === "project"
-      ? PROJECT_PRIORITY_LABELS[props.value]
-      : TASK_PRIORITY_LABELS[props.value];
+      ? getProjectPriorityLabel(t, props.value)
+      : getTaskPriorityLabel(t, props.value);
 
   return (
     <span className={`${styles.priorityBadge} ${classNameFor(props.value)}`}>

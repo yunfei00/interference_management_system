@@ -55,6 +55,23 @@ Backend default local address:
 
 - [http://localhost:8000](http://localhost:8000)
 
+## Internationalization
+
+The frontend now defaults to `zh-CN` and supports `en` with a shared `next-intl` message catalog.
+
+- Message files: `frontend/src/i18n/messages/zh-CN.json`, `frontend/src/i18n/messages/en.json`
+- Locale resolution priority: language switcher selection -> `ims_locale` cookie -> browser `Accept-Language` -> `zh-CN`
+- Shared i18n helpers: `frontend/src/i18n/config.ts`, `frontend/src/i18n/get-request-locale.ts`, `frontend/src/i18n/load-messages.ts`
+- Language switcher component: `frontend/src/components/language-switcher.tsx`
+- Project module, authentication shell, and dashboard navigation now render through translation keys instead of hardcoded UI text
+
+To add another language later:
+
+1. Add the locale to `SUPPORTED_LOCALES` in `frontend/src/i18n/config.ts`
+2. Create a new message file under `frontend/src/i18n/messages/`
+3. Extend the language labels in the existing catalogs
+4. Refresh the app and validate the new locale through the switcher
+
 ## Project Demo Data
 
 The demo seed command creates:

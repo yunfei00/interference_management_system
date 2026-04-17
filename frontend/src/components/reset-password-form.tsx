@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 
 import type { ApiEnvelope } from "@/lib/contracts";
 import { apiFetch } from "@/lib/api-client";
@@ -27,6 +28,7 @@ function extractError(payload: ApiEnvelope<unknown> | null, fallback: string) {
 
 export function ResetPasswordForm() {
   const searchParams = useSearchParams();
+  const t = useTranslations();
   const uid = searchParams.get("uid") ?? "";
   const token = searchParams.get("token") ?? "";
   const [message, setMessage] = useState<string | null>(null);
@@ -39,7 +41,7 @@ export function ResetPasswordForm() {
     setError(null);
 
     if (!uid || !token) {
-      setError("The reset link is incomplete or invalid.");
+      setError(t("auth.reset.invalidLink"));
       return;
     }
 
@@ -47,11 +49,11 @@ export function ResetPasswordForm() {
     const newPassword = String(formData.get("new_password") ?? "");
     const confirmPassword = String(formData.get("confirm_password") ?? "");
     if (!newPassword || !confirmPassword) {
-      setError("Please enter the new password twice.");
+      setError(t("validation.completePasswordFields"));
       return;
     }
     if (newPassword !== confirmPassword) {
-      setError("The two password entries do not match.");
+      setError(t("validation.passwordMismatch"));
       return;
     }
 
@@ -69,10 +71,10 @@ export function ResetPasswordForm() {
     const payload = (await response.json()) as ApiEnvelope<unknown> | null;
     setPending(false);
     if (!response.ok || !payload?.success) {
-      setError(extractError(payload, "Unable to reset the password."));
+      setError(extractError(payload, t("auth.reset.failed")));
       return;
     }
-    setMessage(payload.message || "Password reset successfully. You can now sign in.");
+    setMessage(payload.message || t("auth.reset.success"));
     (event.currentTarget as HTMLFormElement).reset();
   }
 
@@ -80,16 +82,14 @@ export function ResetPasswordForm() {
     <section className={`surface ${styles.card}`}>
       <div className={styles.header}>
         <div className={styles.headerTop}>
-          <div className="eyebrow">Password Recovery</div>
+          <div className="eyebrow">{t("auth.reset.eyebrow")}</div>
           <div className={styles.secureBadge}>
             <span className={styles.secureDot} />
-            One-Time Token
+            {t("auth.reset.badge")}
           </div>
         </div>
-        <h1 className={styles.title}>Reset Password</h1>
-        <p className={styles.subtitle}>
-          Use the reset link from your email to choose a new password. Expired or reused links are rejected by the backend.
-        </p>
+        <h1 className={styles.title}>{t("auth.reset.title")}</h1>
+        <p className={styles.subtitle}>{t("auth.reset.subtitle")}</p>
       </div>
 
       {error ? <div className={styles.error}>{error}</div> : null}
@@ -98,8 +98,8 @@ export function ResetPasswordForm() {
       <form className={styles.form} onSubmit={handleSubmit}>
         <label className={styles.field}>
           <div className={styles.labelRow}>
-            <span className={styles.label}>New Password</span>
-            <span className={styles.fieldHint}>Required</span>
+            <span className={styles.label}>{t("auth.reset.newPassword")}</span>
+            <span className={styles.fieldHint}>{t("validation.required")}</span>
           </div>
           <input
             autoComplete="new-password"
@@ -111,8 +111,8 @@ export function ResetPasswordForm() {
         </label>
         <label className={styles.field}>
           <div className={styles.labelRow}>
-            <span className={styles.label}>Confirm New Password</span>
-            <span className={styles.fieldHint}>Repeat it</span>
+            <span className={styles.label}>{t("auth.reset.confirmPassword")}</span>
+            <span className={styles.fieldHint}>{t("validation.repeatIt")}</span>
           </div>
           <input
             autoComplete="new-password"
@@ -123,15 +123,15 @@ export function ResetPasswordForm() {
           />
         </label>
         <button className={styles.submitButton} disabled={pending} type="submit">
-          {pending ? "Submitting..." : "Reset Password"}
+          {pending ? t("auth.reset.submitting") : t("auth.reset.submit")}
         </button>
       </form>
 
       <div className={styles.footer}>
         <p>
-          Ready to sign in?
+          {t("auth.reset.backToLoginPrompt")}
           <Link className={styles.inlineLink} href="/login">
-            Go to login
+            {t("auth.reset.backToLogin")}
           </Link>
         </p>
       </div>

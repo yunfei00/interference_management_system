@@ -3,6 +3,7 @@
 import type { Route } from "next";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 
 import type { NavTreeNode } from "@/lib/dashboard-navigation";
 import {
@@ -19,10 +20,12 @@ function NavBranch({
   nodes,
   pathname,
   depth,
+  translate,
 }: {
   nodes: NavTreeNode[];
   pathname: string;
   depth: number;
+  translate: (key: string) => string;
 }) {
   return (
     <ul
@@ -39,10 +42,15 @@ function NavBranch({
               className={`${styles.link} ${styles[`depth${Math.min(depth, 3)}`]} ${active ? styles.linkActive : ""} ${!hasChildren && branchActive && !active ? styles.linkBranchActive : ""}`}
               href={node.href as Route}
             >
-              {node.label}
+              {translate(node.key)}
             </Link>
             {hasChildren ? (
-              <NavBranch depth={depth + 1} nodes={node.children!} pathname={pathname} />
+              <NavBranch
+                depth={depth + 1}
+                nodes={node.children!}
+                pathname={pathname}
+                translate={translate}
+              />
             ) : null}
           </li>
         );
@@ -54,13 +62,14 @@ function NavBranch({
 export function DashboardSidebar() {
   const pathname = usePathname();
   const { state } = useDashboardSession();
+  const t = useTranslations("nav");
 
   if (state.kind === "loading") {
     return (
-      <nav aria-label="侧栏导航" className={styles.sidebar}>
-        {PORTAL_NAV_TREE.slice(0, 3).map((n) => (
-          <span className={`${styles.link} ${styles.placeholder}`} key={n.key}>
-            {n.label}
+      <nav aria-label={t("sidebar")} className={styles.sidebar}>
+        {PORTAL_NAV_TREE.slice(0, 3).map((node) => (
+          <span className={`${styles.link} ${styles.placeholder}`} key={node.key}>
+            {t(node.key)}
           </span>
         ))}
       </nav>
@@ -69,10 +78,10 @@ export function DashboardSidebar() {
 
   if (state.kind !== "ready") {
     return (
-      <nav aria-label="侧栏导航" className={styles.sidebar}>
-        {PORTAL_NAV_TREE.slice(0, 4).map((n) => (
-          <span className={`${styles.link} ${styles.placeholder}`} key={n.key}>
-            {n.label}
+      <nav aria-label={t("sidebar")} className={styles.sidebar}>
+        {PORTAL_NAV_TREE.slice(0, 4).map((node) => (
+          <span className={`${styles.link} ${styles.placeholder}`} key={node.key}>
+            {t(node.key)}
           </span>
         ))}
       </nav>
@@ -82,8 +91,8 @@ export function DashboardSidebar() {
   const tree = filterNavTree(PORTAL_NAV_TREE, state.data.permissions);
 
   return (
-    <nav aria-label="侧栏导航" className={styles.sidebar}>
-      <NavBranch depth={0} nodes={tree} pathname={pathname} />
+    <nav aria-label={t("sidebar")} className={styles.sidebar}>
+      <NavBranch depth={0} nodes={tree} pathname={pathname} translate={t} />
     </nav>
   );
 }

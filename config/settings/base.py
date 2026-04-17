@@ -6,6 +6,7 @@ from pathlib import Path
 
 import environ
 from corsheaders.defaults import default_headers
+from django.utils.translation import gettext_lazy as _
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
@@ -58,6 +59,7 @@ MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.locale.LocaleMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -124,9 +126,14 @@ AUTH_PASSWORD_VALIDATORS = [
 
 
 LANGUAGE_CODE = "zh-hans"
+LANGUAGES = [
+    ("zh-hans", _("Simplified Chinese")),
+    ("en", _("English")),
+]
 TIME_ZONE = "Asia/Shanghai"
 USE_I18N = True
 USE_TZ = True
+LOCALE_PATHS = [BASE_DIR / "locale"]
 
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"

@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import {
   createContext,
   startTransition,
@@ -33,6 +34,7 @@ export function DashboardSessionProvider({
 }) {
   const router = useRouter();
   const pathname = usePathname();
+  const t = useTranslations();
   const [state, setState] = useState<DashboardSessionState>({ kind: "loading" });
   const [reloadKey, setReloadKey] = useState(0);
 
@@ -78,19 +80,19 @@ export function DashboardSessionProvider({
         if (!response.ok || !payload.success || !payload.data) {
           if (process.env.NODE_ENV === "development") {
             console.warn(
-              "[auth][session] 拉取失败:",
+              "[auth][session] fetch failed:",
               response.status,
               payload.message,
             );
           }
-          commitError(payload.message || "无法加载当前会话。");
+          commitError(payload.message || t("dashboard.sessionErrorTitle"));
           return;
         }
 
         commitReady(payload.data);
       } catch {
         if (!cancelled) {
-          commitError("前端代理暂时无法连接后端。");
+          commitError(t("auth.errors.backendUnavailable"));
         }
       }
     }
@@ -100,7 +102,7 @@ export function DashboardSessionProvider({
     return () => {
       cancelled = true;
     };
-  }, [reloadKey]);
+  }, [reloadKey, t]);
 
   return (
     <DashboardSessionContext.Provider

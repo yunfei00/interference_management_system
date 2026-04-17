@@ -1,14 +1,16 @@
 "use client";
 
 import { Fragment, useMemo, useState } from "react";
+import { useLocale, useTranslations } from "next-intl";
 
 import type { TaskListItem, TaskStatus } from "@/lib/contracts";
+import type { AppLocale } from "@/i18n/config";
 
 import styles from "./projects.module.css";
 import { EmptyState } from "./empty-state";
 import { MemberAvatarGroup } from "./member-avatar-group";
 import { PriorityBadge } from "./priority-badge";
-import { groupTasksByStatus, TASK_STATUS_LABELS } from "./project-utils";
+import { formatDate, getTaskStatusLabel, groupTasksByStatus, TASK_STATUS_ORDER } from "./project-utils";
 import { StatusBadge } from "./status-badge";
 
 type DragState = {
@@ -32,12 +34,14 @@ export function KanbanBoard({
   const grouped = useMemo(() => groupTasksByStatus(tasks), [tasks]);
   const [dragState, setDragState] = useState<DragState>(null);
   const [activeDrop, setActiveDrop] = useState<{ status: TaskStatus; index: number } | null>(null);
+  const t = useTranslations();
+  const locale = useLocale() as AppLocale;
 
   if (!tasks.length) {
     return (
       <EmptyState
-        description="Create the first task to start tracking work on the board."
-        title="No Tasks Yet"
+        description={t("tasks.kanban.emptyDescription")}
+        title={t("tasks.kanban.emptyTitle")}
       />
     );
   }
@@ -64,14 +68,14 @@ export function KanbanBoard({
 
   return (
     <div className={styles.kanbanGrid}>
-      {(
-        ["todo", "in_progress", "blocked", "done"] as TaskStatus[]
-      ).map((status) => (
+      {TASK_STATUS_ORDER.map((status) => (
         <section className={styles.kanbanColumn} key={status}>
           <div className={styles.sectionHeader}>
             <div>
-              <h3 className={styles.projectTitle}>{TASK_STATUS_LABELS[status]}</h3>
-              <p className={styles.secondaryText}>{grouped[status].length} tasks</p>
+              <h3 className={styles.projectTitle}>{getTaskStatusLabel(t, status)}</h3>
+              <p className={styles.secondaryText}>
+                {t("tasks.kanban.taskCount", { count: grouped[status].length })}
+              </p>
             </div>
             <StatusBadge kind="task" value={status} />
           </div>
@@ -111,15 +115,20 @@ export function KanbanBoard({
                     ) : null}
                   </div>
                   <div className={styles.secondaryText}>
-                    Due {task.due_date || "--"}
+                    {t("tasks.kanban.due", {
+                      date: formatDate(task.due_date, locale, t("common.states.none")),
+                    })}
                   </div>
                   <div className={styles.secondaryText}>
-                    Subtasks {task.subtask_done}/{task.subtask_total}
+                    {t("tasks.kanban.subtasks", {
+                      done: task.subtask_done,
+                      total: task.subtask_total,
+                    })}
                   </div>
                   {task.assignee ? (
                     <MemberAvatarGroup members={[task.assignee]} maxVisible={1} />
                   ) : (
-                    <div className={styles.secondaryText}>Unassigned</div>
+                    <div className={styles.secondaryText}>{t("tasks.kanban.unassigned")}</div>
                   )}
                 </article>
                 <DropZone
@@ -134,7 +143,7 @@ export function KanbanBoard({
             ))}
 
             {!grouped[status].length ? (
-              <div className={styles.placeholder}>Drag tasks here.</div>
+              <div className={styles.placeholder}>{t("tasks.kanban.dropHere")}</div>
             ) : null}
           </div>
         </section>

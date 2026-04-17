@@ -1,12 +1,14 @@
 "use client";
 
+import { useTranslations } from "next-intl";
+
 import type { MilestoneStatus, ProjectStatus, TaskStatus } from "@/lib/contracts";
 
 import styles from "./projects.module.css";
 import {
-  MILESTONE_STATUS_LABELS,
-  PROJECT_STATUS_LABELS,
-  TASK_STATUS_LABELS,
+  getMilestoneStatusLabel,
+  getProjectStatusLabel,
+  getTaskStatusLabel,
 } from "./project-utils";
 
 type StatusBadgeProps =
@@ -30,20 +32,18 @@ function classNameFor(value: string) {
   return classMap[value] || styles.statusTodo;
 }
 
-function labelFor(kind: StatusBadgeProps["kind"], value: string) {
-  if (kind === "project") {
-    return PROJECT_STATUS_LABELS[value as ProjectStatus];
-  }
-  if (kind === "milestone") {
-    return MILESTONE_STATUS_LABELS[value as MilestoneStatus];
-  }
-  return TASK_STATUS_LABELS[value as TaskStatus];
-}
-
 export function StatusBadge(props: StatusBadgeProps) {
+  const t = useTranslations();
+  const label =
+    props.kind === "project"
+      ? getProjectStatusLabel(t, props.value)
+      : props.kind === "milestone"
+        ? getMilestoneStatusLabel(t, props.value)
+        : getTaskStatusLabel(t, props.value);
+
   return (
     <span className={`${styles.statusBadge} ${classNameFor(props.value)}`}>
-      {labelFor(props.kind, props.value)}
+      {label}
     </span>
   );
 }

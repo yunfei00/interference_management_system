@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
+import { useTranslations } from "next-intl";
 
 import type {
   MilestoneItem,
@@ -20,9 +21,11 @@ import styles from "./projects.module.css";
 import { EmptyState } from "./empty-state";
 import { PriorityBadge } from "./priority-badge";
 import {
+  getTaskPriorityLabel,
+  getTaskStatusLabel,
   getUserLabel,
-  TASK_PRIORITY_LABELS,
-  TASK_STATUS_LABELS,
+  TASK_PRIORITY_VALUES,
+  TASK_STATUS_VALUES,
 } from "./project-utils";
 import { StatusBadge } from "./status-badge";
 
@@ -61,6 +64,7 @@ export function TaskForm({
   onClose: () => void;
   onSaved: (task: TaskDetail, message: string) => void;
 }) {
+  const t = useTranslations();
   const team = useMemo(() => buildTeam(project), [project]);
   const dependencyOptions = useMemo(
     () => allTasks.filter((candidate) => candidate.id !== task?.id),
@@ -134,11 +138,11 @@ export function TaskForm({
   async function submit() {
     const trimmedTitle = title.trim();
     if (!trimmedTitle) {
-      setErrorMessage("Task title is required.");
+      setErrorMessage(t("validation.taskTitleRequired"));
       return;
     }
     if (startDate && dueDate && dueDate < startDate) {
-      setErrorMessage("Due date cannot be earlier than start date.");
+      setErrorMessage(t("validation.dueDateBeforeStart"));
       return;
     }
 
@@ -175,10 +179,12 @@ export function TaskForm({
         : await createTask(project.id, payload);
       onSaved(
         saved,
-        task ? `Updated task ${saved.title}.` : `Created task ${saved.title}.`,
+        task
+          ? t("tasks.form.updateSuccess", { name: saved.title })
+          : t("tasks.form.createSuccess", { name: saved.title }),
       );
     } catch (error) {
-      setErrorMessage(resolveTaskError(error));
+      setErrorMessage(resolveTaskError(error, t("tasks.form.saveFailed")));
     }
   }
 
@@ -187,25 +193,27 @@ export function TaskForm({
       <div className={`surface ${styles.modalPanel}`} role="dialog" aria-modal="true">
         <div className={styles.sectionHeader}>
           <div>
-            <div className="eyebrow">{task ? "Edit" : "Create"}</div>
-            <h2 className={styles.projectTitle}>Task</h2>
+            <div className="eyebrow">
+              {task ? t("tasks.form.editEyebrow") : t("tasks.form.createEyebrow")}
+            </div>
+            <h2 className={styles.projectTitle}>{t("tasks.form.title")}</h2>
           </div>
           <button className="buttonGhost" onClick={onClose} type="button">
-            Close
+            {t("common.actions.close")}
           </button>
         </div>
 
         {errorMessage ? (
           <EmptyState
             description={errorMessage}
-            title="Unable to save task"
+            title={t("tasks.form.saveFailed")}
             tone="error"
           />
         ) : null}
 
         <div className={styles.formGrid}>
           <label className={`${styles.field} ${styles.fullSpan}`}>
-            <span className={styles.fieldLabel}>Task Title</span>
+            <span className={styles.fieldLabel}>{t("tasks.form.taskTitle")}</span>
             <input
               className={styles.input}
               onChange={(event) => setTitle(event.target.value)}
@@ -214,7 +222,7 @@ export function TaskForm({
           </label>
 
           <label className={`${styles.field} ${styles.fullSpan}`}>
-            <span className={styles.fieldLabel}>Description</span>
+            <span className={styles.fieldLabel}>{t("tasks.form.description")}</span>
             <textarea
               className={styles.textarea}
               onChange={(event) => setDescription(event.target.value)}
@@ -223,37 +231,37 @@ export function TaskForm({
           </label>
 
           <label className={styles.field}>
-            <span className={styles.fieldLabel}>Status</span>
+            <span className={styles.fieldLabel}>{t("tasks.form.status")}</span>
             <select
               className={styles.select}
               onChange={(event) => setStatus(event.target.value as TaskWriteInput["status"])}
               value={status}
             >
-              {Object.entries(TASK_STATUS_LABELS).map(([value, label]) => (
+              {TASK_STATUS_VALUES.map((value) => (
                 <option key={value} value={value}>
-                  {label}
+                  {getTaskStatusLabel(t, value)}
                 </option>
               ))}
             </select>
           </label>
 
           <label className={styles.field}>
-            <span className={styles.fieldLabel}>Priority</span>
+            <span className={styles.fieldLabel}>{t("tasks.form.priority")}</span>
             <select
               className={styles.select}
               onChange={(event) => setPriority(event.target.value as TaskWriteInput["priority"])}
               value={priority}
             >
-              {Object.entries(TASK_PRIORITY_LABELS).map(([value, label]) => (
+              {TASK_PRIORITY_VALUES.map((value) => (
                 <option key={value} value={value}>
-                  {label}
+                  {getTaskPriorityLabel(t, value)}
                 </option>
               ))}
             </select>
           </label>
 
           <label className={styles.field}>
-            <span className={styles.fieldLabel}>Assignee</span>
+            <span className={styles.fieldLabel}>{t("tasks.form.assignee")}</span>
             <select
               className={styles.select}
               onChange={(event) =>
@@ -261,7 +269,7 @@ export function TaskForm({
               }
               value={assigneeId}
             >
-              <option value="">Unassigned</option>
+              <option value="">{t("tasks.form.unassigned")}</option>
               {team.map((member) => (
                 <option key={member.id} value={member.id}>
                   {getUserLabel(member)}
@@ -271,7 +279,7 @@ export function TaskForm({
           </label>
 
           <label className={styles.field}>
-            <span className={styles.fieldLabel}>Milestone</span>
+            <span className={styles.fieldLabel}>{t("tasks.form.milestone")}</span>
             <select
               className={styles.select}
               onChange={(event) =>
@@ -279,7 +287,7 @@ export function TaskForm({
               }
               value={milestoneId}
             >
-              <option value="">No milestone</option>
+              <option value="">{t("tasks.form.noMilestone")}</option>
               {milestones.map((milestoneOption) => (
                 <option key={milestoneOption.id} value={milestoneOption.id}>
                   {milestoneOption.name}
@@ -289,7 +297,7 @@ export function TaskForm({
           </label>
 
           <label className={styles.field}>
-            <span className={styles.fieldLabel}>Parent Task</span>
+            <span className={styles.fieldLabel}>{t("tasks.form.parentTask")}</span>
             <select
               className={styles.select}
               onChange={(event) =>
@@ -297,7 +305,7 @@ export function TaskForm({
               }
               value={parentTaskId}
             >
-              <option value="">No parent task</option>
+              <option value="">{t("tasks.form.noParent")}</option>
               {dependencyOptions.map((candidate) => (
                 <option key={candidate.id} value={candidate.id}>
                   {candidate.title}
@@ -307,7 +315,7 @@ export function TaskForm({
           </label>
 
           <label className={styles.field}>
-            <span className={styles.fieldLabel}>Start Date</span>
+            <span className={styles.fieldLabel}>{t("tasks.form.startDate")}</span>
             <input
               className={styles.input}
               onChange={(event) => setStartDate(event.target.value)}
@@ -317,7 +325,7 @@ export function TaskForm({
           </label>
 
           <label className={styles.field}>
-            <span className={styles.fieldLabel}>Due Date</span>
+            <span className={styles.fieldLabel}>{t("tasks.form.dueDate")}</span>
             <input
               className={styles.input}
               onChange={(event) => setDueDate(event.target.value)}
@@ -327,7 +335,7 @@ export function TaskForm({
           </label>
 
           <label className={styles.field}>
-            <span className={styles.fieldLabel}>Estimated Hours</span>
+            <span className={styles.fieldLabel}>{t("tasks.form.estimatedHours")}</span>
             <input
               className={styles.input}
               min={0}
@@ -339,7 +347,7 @@ export function TaskForm({
           </label>
 
           <label className={styles.field}>
-            <span className={styles.fieldLabel}>Actual Hours</span>
+            <span className={styles.fieldLabel}>{t("tasks.form.actualHours")}</span>
             <input
               className={styles.input}
               min={0}
@@ -351,7 +359,7 @@ export function TaskForm({
           </label>
 
           <label className={styles.field}>
-            <span className={styles.fieldLabel}>Progress</span>
+            <span className={styles.fieldLabel}>{t("tasks.form.progress")}</span>
             <input
               className={styles.input}
               max={100}
@@ -363,7 +371,7 @@ export function TaskForm({
           </label>
 
           <div className={`${styles.field} ${styles.fullSpan}`}>
-            <span className={styles.fieldLabel}>Collaborators</span>
+            <span className={styles.fieldLabel}>{t("tasks.form.collaborators")}</span>
             <div className={styles.pickerPanel}>
               <div className={styles.pickerList}>
                 {team.map((member) => (
@@ -383,7 +391,7 @@ export function TaskForm({
           </div>
 
           <div className={`${styles.field} ${styles.fullSpan}`}>
-            <span className={styles.fieldLabel}>Dependencies</span>
+            <span className={styles.fieldLabel}>{t("tasks.form.dependencies")}</span>
             <div className={styles.pickerPanel}>
               {dependencyOptions.length ? (
                 <div className={styles.pickerList}>
@@ -407,13 +415,13 @@ export function TaskForm({
                   ))}
                 </div>
               ) : (
-                <div className={styles.placeholder}>No dependency candidates yet.</div>
+                <div className={styles.placeholder}>{t("tasks.form.noDependencyCandidates")}</div>
               )}
             </div>
           </div>
 
           <div className={`${styles.field} ${styles.fullSpan}`}>
-            <span className={styles.fieldLabel}>Subtasks</span>
+            <span className={styles.fieldLabel}>{t("tasks.form.subtasks")}</span>
             <div className={styles.detailList}>
               {subtasks.map((subtask, index) => (
                 <div className={styles.listRow} key={subtask.id ?? `draft-${index}`}>
@@ -429,7 +437,7 @@ export function TaskForm({
                     onChange={(event) =>
                       updateSubtask(index, { title: event.target.value })
                     }
-                    placeholder={`Subtask ${index + 1}`}
+                    placeholder={t("tasks.form.subtaskPlaceholder", { index: index + 1 })}
                     value={subtask.title}
                   />
                   <button
@@ -437,7 +445,7 @@ export function TaskForm({
                     onClick={() => removeSubtask(index)}
                     type="button"
                   >
-                    Remove
+                    {t("tasks.form.removeSubtask")}
                   </button>
                 </div>
               ))}
@@ -455,7 +463,7 @@ export function TaskForm({
                 }
                 type="button"
               >
-                Add Subtask
+                {t("tasks.form.addSubtask")}
               </button>
             </div>
           </div>
@@ -463,7 +471,7 @@ export function TaskForm({
 
         <div className={styles.actionBar}>
           <button className="buttonGhost" onClick={onClose} type="button">
-            Cancel
+            {t("common.actions.cancel")}
           </button>
           <button
             className="button"
@@ -475,7 +483,11 @@ export function TaskForm({
             }
             type="button"
           >
-            {isPending ? "Saving..." : task ? "Save Task" : "Create Task"}
+            {isPending
+              ? t("common.actions.save")
+              : task
+                ? t("tasks.form.submitUpdate")
+                : t("tasks.form.submitCreate")}
           </button>
         </div>
       </div>
@@ -483,16 +495,16 @@ export function TaskForm({
   );
 }
 
-function resolveTaskError(error: unknown) {
+function resolveTaskError(error: unknown, fallback: string) {
   if (error instanceof ApiResponseError) {
     return (
       error.message ||
       extractApiErrorMessage(error.data) ||
-      "Unable to save the task."
+      fallback
     );
   }
   if (error instanceof Error) {
     return error.message;
   }
-  return "Unable to save the task.";
+  return fallback;
 }

@@ -1,0 +1,42 @@
+.switcher {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 2.5rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.dark {
+  border-color: rgba(255, 248, 238, 0.18);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.label {
+  font-size: 0.84rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.dark .label {
+  color: rgba(255, 248, 238, 0.78);
+}
+
+.select {
+  min-width: 5.4rem;
+  border: none;
+  background: transparent;
+  color: var(--ink-strong);
+  cursor: pointer;
+  outline: none;
+}
+
+.dark .select {
+  color: rgba(255, 248, 238, 0.96);
+}
+
+.select:disabled {
+  cursor: wait;
+}

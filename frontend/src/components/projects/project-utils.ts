@@ -9,42 +9,49 @@ import type {
   TaskStatus,
   UserBrief,
 } from "@/lib/contracts";
+import type { AppLocale } from "@/i18n/config";
+import { toIntlLocale } from "@/i18n/config";
 
-export const PROJECT_STATUS_LABELS: Record<ProjectStatus, string> = {
-  not_started: "Not Started",
-  in_progress: "In Progress",
-  on_hold: "On Hold",
-  completed: "Completed",
-  cancelled: "Cancelled",
-};
+export type TranslateFn = (
+  key: string,
+  values?: Record<string, string | number | Date>,
+) => string;
 
-export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
-  todo: "Todo",
-  in_progress: "In Progress",
-  blocked: "Blocked",
-  done: "Done",
-};
+export const PROJECT_STATUS_VALUES: ProjectStatus[] = [
+  "not_started",
+  "in_progress",
+  "on_hold",
+  "completed",
+  "cancelled",
+];
 
-export const MILESTONE_STATUS_LABELS: Record<MilestoneStatus, string> = {
-  pending: "Pending",
-  in_progress: "In Progress",
-  completed: "Completed",
-  delayed: "Delayed",
-};
+export const TASK_STATUS_VALUES: TaskStatus[] = [
+  "todo",
+  "in_progress",
+  "blocked",
+  "done",
+];
 
-export const PROJECT_PRIORITY_LABELS: Record<ProjectPriority, string> = {
-  low: "Low",
-  medium: "Medium",
-  high: "High",
-  critical: "Critical",
-};
+export const MILESTONE_STATUS_VALUES: MilestoneStatus[] = [
+  "pending",
+  "in_progress",
+  "completed",
+  "delayed",
+];
 
-export const TASK_PRIORITY_LABELS: Record<TaskPriority, string> = {
-  low: "Low",
-  medium: "Medium",
-  high: "High",
-  urgent: "Urgent",
-};
+export const PROJECT_PRIORITY_VALUES: ProjectPriority[] = [
+  "low",
+  "medium",
+  "high",
+  "critical",
+];
+
+export const TASK_PRIORITY_VALUES: TaskPriority[] = [
+  "low",
+  "medium",
+  "high",
+  "urgent",
+];
 
 export const TASK_STATUS_ORDER: TaskStatus[] = [
   "todo",
@@ -53,16 +60,39 @@ export const TASK_STATUS_ORDER: TaskStatus[] = [
   "done",
 ];
 
-export function getUserLabel(user: UserBrief | null | undefined): string {
+export function getProjectStatusLabel(t: TranslateFn, value: ProjectStatus): string {
+  return t(`projects.status.${value}`);
+}
+
+export function getTaskStatusLabel(t: TranslateFn, value: TaskStatus): string {
+  return t(`tasks.status.${value}`);
+}
+
+export function getMilestoneStatusLabel(t: TranslateFn, value: MilestoneStatus): string {
+  return t(`milestones.status.${value}`);
+}
+
+export function getProjectPriorityLabel(t: TranslateFn, value: ProjectPriority): string {
+  return t(`projects.priority.${value}`);
+}
+
+export function getTaskPriorityLabel(t: TranslateFn, value: TaskPriority): string {
+  return t(`tasks.priority.${value}`);
+}
+
+export function getUserLabel(
+  user: UserBrief | null | undefined,
+  fallback = "--",
+): string {
   if (!user) {
-    return "Unassigned";
+    return fallback;
   }
   return user.display_name || user.username;
 }
 
 export function getInitials(user: UserBrief | null | undefined): string {
-  const label = getUserLabel(user).trim();
-  if (!label || label === "Unassigned") {
+  const label = getUserLabel(user, "").trim();
+  if (!label) {
     return "--";
   }
   const clean = label.replace(/\s+/g, " ").trim();
@@ -73,30 +103,38 @@ export function getInitials(user: UserBrief | null | undefined): string {
   return clean.slice(0, 2).toUpperCase();
 }
 
-export function formatDate(value: string | null | undefined): string {
+export function formatDate(
+  value: string | null | undefined,
+  locale: AppLocale,
+  fallback = "--",
+): string {
   if (!value) {
-    return "--";
+    return fallback;
   }
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) {
     return value;
   }
-  return new Intl.DateTimeFormat("zh-CN", {
+  return new Intl.DateTimeFormat(toIntlLocale(locale), {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
   }).format(parsed);
 }
 
-export function formatDateTime(value: string | null | undefined): string {
+export function formatDateTime(
+  value: string | null | undefined,
+  locale: AppLocale,
+  fallback = "--",
+): string {
   if (!value) {
-    return "--";
+    return fallback;
   }
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) {
     return value;
   }
-  return new Intl.DateTimeFormat("zh-CN", {
+  return new Intl.DateTimeFormat(toIntlLocale(locale), {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useTranslations } from "next-intl";
 
 import type { MilestoneItem } from "@/lib/contracts";
 import {
@@ -12,7 +13,10 @@ import { ApiResponseError, extractApiErrorMessage } from "@/lib/api-client";
 
 import styles from "./projects.module.css";
 import { EmptyState } from "./empty-state";
-import { MILESTONE_STATUS_LABELS } from "./project-utils";
+import {
+  getMilestoneStatusLabel,
+  MILESTONE_STATUS_VALUES,
+} from "./project-utils";
 
 export function MilestoneForm({
   projectId,
@@ -25,6 +29,7 @@ export function MilestoneForm({
   onClose: () => void;
   onSaved: (milestone: MilestoneItem, message: string) => void;
 }) {
+  const t = useTranslations();
   const [name, setName] = useState(milestone?.name ?? "");
   const [description, setDescription] = useState(milestone?.description ?? "");
   const [dueDate, setDueDate] = useState(milestone?.due_date ?? "");
@@ -36,7 +41,7 @@ export function MilestoneForm({
   async function submit() {
     const trimmedName = name.trim();
     if (!trimmedName) {
-      setErrorMessage("Milestone name is required.");
+      setErrorMessage(t("validation.milestoneNameRequired"));
       return;
     }
 
@@ -55,10 +60,12 @@ export function MilestoneForm({
         : await createMilestone(projectId, payload);
       onSaved(
         saved,
-        milestone ? `Updated milestone ${saved.name}.` : `Created milestone ${saved.name}.`,
+        milestone
+          ? t("milestones.form.updateSuccess", { name: saved.name })
+          : t("milestones.form.createSuccess", { name: saved.name }),
       );
     } catch (error) {
-      setErrorMessage(resolveMilestoneError(error));
+      setErrorMessage(resolveMilestoneError(error, t("milestones.form.saveFailed")));
     }
   }
 
@@ -67,25 +74,27 @@ export function MilestoneForm({
       <div className={`surface ${styles.modalPanel}`} role="dialog" aria-modal="true">
         <div className={styles.sectionHeader}>
           <div>
-            <div className="eyebrow">{milestone ? "Edit" : "Create"}</div>
-            <h2 className={styles.projectTitle}>Milestone</h2>
+            <div className="eyebrow">
+              {milestone ? t("milestones.form.editEyebrow") : t("milestones.form.createEyebrow")}
+            </div>
+            <h2 className={styles.projectTitle}>{t("milestones.form.title")}</h2>
           </div>
           <button className="buttonGhost" onClick={onClose} type="button">
-            Close
+            {t("common.actions.close")}
           </button>
         </div>
 
         {errorMessage ? (
           <EmptyState
             description={errorMessage}
-            title="Unable to save milestone"
+            title={t("milestones.form.saveFailed")}
             tone="error"
           />
         ) : null}
 
         <div className={styles.formGrid}>
           <label className={`${styles.field} ${styles.fullSpan}`}>
-            <span className={styles.fieldLabel}>Milestone Name</span>
+            <span className={styles.fieldLabel}>{t("milestones.form.name")}</span>
             <input
               className={styles.input}
               onChange={(event) => setName(event.target.value)}
@@ -94,7 +103,7 @@ export function MilestoneForm({
           </label>
 
           <label className={`${styles.field} ${styles.fullSpan}`}>
-            <span className={styles.fieldLabel}>Description</span>
+            <span className={styles.fieldLabel}>{t("milestones.form.description")}</span>
             <textarea
               className={styles.textarea}
               onChange={(event) => setDescription(event.target.value)}
@@ -103,22 +112,22 @@ export function MilestoneForm({
           </label>
 
           <label className={styles.field}>
-            <span className={styles.fieldLabel}>Status</span>
+            <span className={styles.fieldLabel}>{t("milestones.form.status")}</span>
             <select
               className={styles.select}
               onChange={(event) => setStatus(event.target.value as typeof status)}
               value={status}
             >
-              {Object.entries(MILESTONE_STATUS_LABELS).map(([value, label]) => (
+              {MILESTONE_STATUS_VALUES.map((value) => (
                 <option key={value} value={value}>
-                  {label}
+                  {getMilestoneStatusLabel(t, value)}
                 </option>
               ))}
             </select>
           </label>
 
           <label className={styles.field}>
-            <span className={styles.fieldLabel}>Due Date</span>
+            <span className={styles.fieldLabel}>{t("milestones.form.dueDate")}</span>
             <input
               className={styles.input}
               onChange={(event) => setDueDate(event.target.value)}
@@ -128,7 +137,7 @@ export function MilestoneForm({
           </label>
 
           <label className={styles.field}>
-            <span className={styles.fieldLabel}>Sort Order</span>
+            <span className={styles.fieldLabel}>{t("milestones.form.sortOrder")}</span>
             <input
               className={styles.input}
               min={0}
@@ -141,7 +150,7 @@ export function MilestoneForm({
 
         <div className={styles.actionBar}>
           <button className="buttonGhost" onClick={onClose} type="button">
-            Cancel
+            {t("common.actions.cancel")}
           </button>
           <button
             className="button"
@@ -153,7 +162,11 @@ export function MilestoneForm({
             }
             type="button"
           >
-            {isPending ? "Saving..." : milestone ? "Save Milestone" : "Create Milestone"}
+            {isPending
+              ? t("common.actions.save")
+              : milestone
+                ? t("milestones.form.submitUpdate")
+                : t("milestones.form.submitCreate")}
           </button>
         </div>
       </div>
@@ -161,16 +174,16 @@ export function MilestoneForm({
   );
 }
 
-function resolveMilestoneError(error: unknown) {
+function resolveMilestoneError(error: unknown, fallback: string) {
   if (error instanceof ApiResponseError) {
     return (
       error.message ||
       extractApiErrorMessage(error.data) ||
-      "Unable to save the milestone."
+      fallback
     );
   }
   if (error instanceof Error) {
     return error.message;
   }
-  return "Unable to save the milestone.";
+  return fallback;
 }

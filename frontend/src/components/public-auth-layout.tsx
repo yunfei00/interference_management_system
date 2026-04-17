@@ -1,33 +1,42 @@
-import { APP_NAME } from "@/lib/public-config";
+"use client";
+
+import { useTranslations } from "next-intl";
 
 import gateStyles from "./auth-gate.module.css";
+import { LanguageSwitcher } from "./language-switcher";
 
-function brandInitials() {
-  const name = APP_NAME.trim();
-  if (!name) {
+function brandInitials(name: string) {
+  const normalized = name.trim();
+  if (!normalized) {
     return "IM";
   }
-  return name.length <= 2 ? name : name.slice(0, 2).toUpperCase();
+  return normalized.length <= 2 ? normalized : normalized.slice(0, 2).toUpperCase();
 }
 
 export function PublicAuthLayout({
-  title,
-  description,
+  titleKey,
+  descriptionKey,
   children,
 }: {
-  title: string;
-  description: string;
+  titleKey: string;
+  descriptionKey: string;
   children: React.ReactNode;
 }) {
+  const t = useTranslations();
+  const appName = t("common.appName");
+
   return (
     <div className={gateStyles.shell}>
       <main className={gateStyles.page}>
-        <aside aria-label="Product identity" className={gateStyles.brand}>
+        <aside aria-label={t("auth.productIdentity")} className={gateStyles.brand}>
           <div className={gateStyles.brandInner}>
-            <div className={gateStyles.brandMark}>{brandInitials()}</div>
-            <h1 className={gateStyles.brandTitle}>{APP_NAME}</h1>
-            <p className={gateStyles.brandTagline}>{description}</p>
-            <p className={gateStyles.brandFoot}>{title}</p>
+            <div className={gateStyles.brandTop}>
+              <LanguageSwitcher variant="dark" />
+            </div>
+            <div className={gateStyles.brandMark}>{brandInitials(appName)}</div>
+            <h1 className={gateStyles.brandTitle}>{appName}</h1>
+            <p className={gateStyles.brandTagline}>{t(descriptionKey)}</p>
+            <p className={gateStyles.brandFoot}>{t(titleKey)}</p>
           </div>
         </aside>
         <div className={gateStyles.panel}>

@@ -1,6 +1,5 @@
 export type NavTreeNode = {
   key: string;
-  label: string;
   href: string;
   requiredPermissions: string[];
   children?: NavTreeNode[];
@@ -11,19 +10,16 @@ const INTERFERENCE_BASE = "/dashboard/electromagnetic/interference";
 export const PORTAL_NAV_TREE: NavTreeNode[] = [
   {
     key: "portal",
-    label: "Workspace",
     href: "/dashboard",
     requiredPermissions: ["overview.view"],
   },
   {
     key: "system",
-    label: "System Management",
     href: "/dashboard/admin/users",
     requiredPermissions: ["admin.users.view"],
     children: [
       {
         key: "admin_users",
-        label: "User Management",
         href: "/dashboard/admin/users",
         requiredPermissions: ["admin.users.view"],
       },
@@ -31,25 +27,21 @@ export const PORTAL_NAV_TREE: NavTreeNode[] = [
   },
   {
     key: "projects",
-    label: "Project Management",
     href: "/dashboard/projects",
     requiredPermissions: ["projects.module.view"],
   },
   {
     key: "electromagnetic",
-    label: "Electromagnetic",
     href: "/dashboard/electromagnetic",
     requiredPermissions: ["department.electromagnetic.view"],
     children: [
       {
         key: "interference",
-        label: "Interference",
         href: INTERFERENCE_BASE,
         requiredPermissions: ["department.interference.view"],
         children: [
           {
             key: "interference_home",
-            label: "Interference Home",
             href: INTERFERENCE_BASE,
             requiredPermissions: [
               "department.interference.view",
@@ -58,7 +50,6 @@ export const PORTAL_NAV_TREE: NavTreeNode[] = [
           },
           {
             key: "datasets",
-            label: "Datasets",
             href: `${INTERFERENCE_BASE}/datasets`,
             requiredPermissions: [
               "department.interference.view",
@@ -67,7 +58,6 @@ export const PORTAL_NAV_TREE: NavTreeNode[] = [
           },
           {
             key: "tools",
-            label: "Tools",
             href: `${INTERFERENCE_BASE}/tools`,
             requiredPermissions: [
               "department.interference.view",
@@ -76,7 +66,6 @@ export const PORTAL_NAV_TREE: NavTreeNode[] = [
           },
           {
             key: "hosts",
-            label: "Hosts",
             href: `${INTERFERENCE_BASE}/hosts`,
             requiredPermissions: [
               "department.interference.view",
@@ -85,7 +74,6 @@ export const PORTAL_NAV_TREE: NavTreeNode[] = [
           },
           {
             key: "commands",
-            label: "Command Audit",
             href: `${INTERFERENCE_BASE}/commands`,
             requiredPermissions: [
               "department.interference.view",
@@ -96,13 +84,11 @@ export const PORTAL_NAV_TREE: NavTreeNode[] = [
       },
       {
         key: "rse",
-        label: "RSE",
         href: "/dashboard/electromagnetic/rse",
         requiredPermissions: ["department.rse.view", "rse.dashboard.view"],
       },
       {
         key: "emc",
-        label: "EMC",
         href: "/dashboard/electromagnetic/emc",
         requiredPermissions: ["department.emc.view", "emc.dashboard.view"],
       },
@@ -110,7 +96,6 @@ export const PORTAL_NAV_TREE: NavTreeNode[] = [
   },
   {
     key: "rf",
-    label: "RF",
     href: "/dashboard/rf",
     requiredPermissions: ["department.rf.view", "rf.dashboard.view"],
   },
@@ -203,12 +188,14 @@ export function findDeepestNavMatch(
   if (stack.length === 0) {
     return null;
   }
+
   stack.sort((left, right) => {
     if (right.hrefLen !== left.hrefLen) {
       return right.hrefLen - left.hrefLen;
     }
     return right.depth - left.depth;
   });
+
   const top = stack[0]!;
   return { node: top.node, ancestors: top.ancestors };
 }
@@ -216,15 +203,15 @@ export function findDeepestNavMatch(
 export function getBreadcrumbItems(
   pathname: string,
   permissions: string[],
-): { label: string; href: string; key: string }[] {
+): { href: string; key: string }[] {
   const tree = filterNavTree(PORTAL_NAV_TREE, permissions);
   const match = findDeepestNavMatch(pathname, tree);
   if (!match) {
     return [];
   }
+
   return [...match.ancestors, match.node].map((node) => ({
     key: node.key,
-    label: node.label,
     href: node.href,
   }));
 }

@@ -1,9 +1,16 @@
 "use client";
 
 import Link from "next/link";
+import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 
-import type { PaginatedPayload, ProjectDetail, ProjectListItem, ProjectSummaryPayload } from "@/lib/contracts";
+import type {
+  PaginatedPayload,
+  ProjectDetail,
+  ProjectListItem,
+  ProjectSummaryPayload,
+} from "@/lib/contracts";
+import type { AppLocale } from "@/i18n/config";
 import { archiveProject, fetchProjectSummary, fetchProjects } from "@/lib/api/projects";
 import { ApiResponseError } from "@/lib/api-client";
 
@@ -15,7 +22,15 @@ import { EmptyState } from "./empty-state";
 import { MemberAvatarGroup } from "./member-avatar-group";
 import { PriorityBadge } from "./priority-badge";
 import { ProjectForm } from "./project-form";
-import { formatDate, formatDateTime } from "./project-utils";
+import {
+  formatDate,
+  formatDateTime,
+  getProjectPriorityLabel,
+  getProjectStatusLabel,
+  getUserLabel,
+  PROJECT_PRIORITY_VALUES,
+  PROJECT_STATUS_VALUES,
+} from "./project-utils";
 import { StatusBadge } from "./status-badge";
 import { ToastBanner, type ToastState } from "./toast-banner";
 
@@ -24,23 +39,22 @@ type ResourceState<T> =
   | { kind: "ready"; data: T }
   | { kind: "error"; message: string };
 
-const SUMMARY_ITEMS: Array<{
-  key: keyof ProjectSummaryPayload;
-  label: string;
-}> = [
-  { key: "total_projects", label: "Total Projects" },
-  { key: "in_progress_projects", label: "In Progress" },
-  { key: "completed_projects", label: "Completed" },
-  { key: "my_projects", label: "My Projects" },
-  { key: "my_pending_tasks", label: "My Pending Tasks" },
-  { key: "upcoming_tasks", label: "Due Soon" },
-  { key: "blocked_tasks", label: "Blocked Tasks" },
+const SUMMARY_KEYS: Array<keyof ProjectSummaryPayload> = [
+  "total_projects",
+  "in_progress_projects",
+  "completed_projects",
+  "my_projects",
+  "my_pending_tasks",
+  "upcoming_tasks",
+  "blocked_tasks",
 ];
 
 export function ProjectListPage() {
   const { state: session } = useDashboardSession();
   const ready = session.kind === "ready";
   const currentUserId = ready ? session.data.user.id : 0;
+  const t = useTranslations();
+  const locale = useLocale() as AppLocale;
 
   const [searchInput, setSearchInput] = useState("");
   const [keyword, setKeyword] = useState("");
@@ -88,7 +102,7 @@ export function ProjectListPage() {
         if (!cancelled) {
           setProjectsState({
             kind: "error",
-            message: resolveError(error, "Unable to load projects."),
+            message: resolveError(error, t("projects.errors.list")),
           });
         }
       }
@@ -98,7 +112,7 @@ export function ProjectListPage() {
     return () => {
       cancelled = true;
     };
-  }, [query, ready, reloadKey]);
+  }, [query, ready, reloadKey, t]);
 
   useEffect(() => {
     if (!ready) {
@@ -116,7 +130,7 @@ export function ProjectListPage() {
         if (!cancelled) {
           setSummaryState({
             kind: "error",
-            message: resolveError(error, "Unable to load project summary."),
+            message: resolveError(error, t("projects.errors.summary")),
           });
         }
       }
@@ -125,7 +139,7 @@ export function ProjectListPage() {
     return () => {
       cancelled = true;
     };
-  }, [ready, reloadKey]);
+  }, [ready, reloadKey, t]);
 
   useEffect(() => {
     if (!toast) {
@@ -146,20 +160,17 @@ export function ProjectListPage() {
 
   return (
     <DepartmentAccessGuard
-      description="Project management is only available to approved users."
+      description={t("projects.accessDeniedDescription")}
       requiredPermissions={["projects.module.view"]}
-      title="Access denied"
+      title={t("projects.accessDeniedTitle")}
     >
       <div className={styles.page}>
         <section className={`surface ${styles.hero}`}>
           <div className={styles.sectionHeader}>
             <div>
-              <div className="eyebrow">Project Management</div>
-              <h1 className={styles.heroTitle}>Project Portfolio</h1>
-              <p className={styles.heroText}>
-                Track cross-team delivery with projects, milestones, tasks, Kanban flow,
-                attachments, and activity history in one place.
-              </p>
+              <div className="eyebrow">{t("projects.title")}</div>
+              <h1 className={styles.heroTitle}>{t("projects.portfolioTitle")}</h1>
+              <p className={styles.heroText}>{t("projects.heroSubtitle")}</p>
             </div>
             <button
               className="button"
@@ -169,17 +180,17 @@ export function ProjectListPage() {
               }}
               type="button"
             >
-              Create Project
+              {t("projects.actions.createProject")}
             </button>
           </div>
 
           {summaryState.kind === "ready" ? (
             <div className={styles.summaryGrid}>
-              {SUMMARY_ITEMS.map((item) => (
-                <article className={styles.summaryCard} key={item.key}>
-                  <span className={styles.summaryLabel}>{item.label}</span>
+              {SUMMARY_KEYS.map((item) => (
+                <article className={styles.summaryCard} key={item}>
+                  <span className={styles.summaryLabel}>{t(`projects.summary.${item}`)}</span>
                   <strong className={styles.summaryValue}>
-                    {summaryState.data[item.key]}
+                    {summaryState.data[item]}
                   </strong>
                 </article>
               ))}
@@ -187,14 +198,14 @@ export function ProjectListPage() {
           ) : summaryState.kind === "error" ? (
             <EmptyState
               description={summaryState.message}
-              title="Summary unavailable"
+              title={t("projects.errors.summary")}
               tone="error"
             />
           ) : (
             <div className={styles.summaryGrid}>
-              {SUMMARY_ITEMS.map((item) => (
-                <article className={styles.summaryCard} key={item.key}>
-                  <span className={styles.summaryLabel}>{item.label}</span>
+              {SUMMARY_KEYS.map((item) => (
+                <article className={styles.summaryCard} key={item}>
+                  <span className={styles.summaryLabel}>{t(`projects.summary.${item}`)}</span>
                   <strong className={styles.summaryValue}>...</strong>
                 </article>
               ))}
@@ -206,7 +217,7 @@ export function ProjectListPage() {
           <div className={styles.toolbar}>
             <div className={styles.toolbarStart}>
               <label className={styles.fieldWide}>
-                <span className={styles.fieldLabel}>Search</span>
+                <span className={styles.fieldLabel}>{t("projects.filters.search")}</span>
                 <input
                   className={styles.input}
                   onChange={(event) => setSearchInput(event.target.value)}
@@ -215,12 +226,12 @@ export function ProjectListPage() {
                       applyFilters();
                     }
                   }}
-                  placeholder="Search by project name or code"
+                  placeholder={t("projects.filters.searchPlaceholder")}
                   value={searchInput}
                 />
               </label>
               <label className={styles.field}>
-                <span className={styles.fieldLabel}>Status</span>
+                <span className={styles.fieldLabel}>{t("projects.filters.status")}</span>
                 <select
                   className={styles.select}
                   onChange={(event) => {
@@ -229,16 +240,16 @@ export function ProjectListPage() {
                   }}
                   value={statusFilter}
                 >
-                  <option value="">All statuses</option>
-                  <option value="not_started">Not Started</option>
-                  <option value="in_progress">In Progress</option>
-                  <option value="on_hold">On Hold</option>
-                  <option value="completed">Completed</option>
-                  <option value="cancelled">Cancelled</option>
+                  <option value="">{t("common.states.allStatuses")}</option>
+                  {PROJECT_STATUS_VALUES.map((status) => (
+                    <option key={status} value={status}>
+                      {getProjectStatusLabel(t, status)}
+                    </option>
+                  ))}
                 </select>
               </label>
               <label className={styles.field}>
-                <span className={styles.fieldLabel}>Priority</span>
+                <span className={styles.fieldLabel}>{t("projects.filters.priority")}</span>
                 <select
                   className={styles.select}
                   onChange={(event) => {
@@ -247,11 +258,12 @@ export function ProjectListPage() {
                   }}
                   value={priorityFilter}
                 >
-                  <option value="">All priorities</option>
-                  <option value="low">Low</option>
-                  <option value="medium">Medium</option>
-                  <option value="high">High</option>
-                  <option value="critical">Critical</option>
+                  <option value="">{t("common.states.allPriorities")}</option>
+                  {PROJECT_PRIORITY_VALUES.map((priority) => (
+                    <option key={priority} value={priority}>
+                      {getProjectPriorityLabel(t, priority)}
+                    </option>
+                  ))}
                 </select>
               </label>
               <label className={styles.switchRow}>
@@ -263,7 +275,7 @@ export function ProjectListPage() {
                   }}
                   type="checkbox"
                 />
-                Only my projects
+                {t("projects.filters.mineOnly")}
               </label>
             </div>
 
@@ -274,26 +286,27 @@ export function ProjectListPage() {
                   onClick={() => setViewMode("table")}
                   type="button"
                 >
-                  Table
+                  {t("projects.view.table")}
                 </button>
                 <button
                   className={`${styles.viewButton} ${viewMode === "cards" ? styles.viewButtonActive : ""}`}
                   onClick={() => setViewMode("cards")}
                   type="button"
                 >
-                  Cards
+                  {t("projects.view.cards")}
                 </button>
               </div>
               <button className="buttonGhost" onClick={applyFilters} type="button">
-                Apply Filters
+                {t("common.actions.apply")}
               </button>
               <button className="buttonGhost" onClick={refresh} type="button">
-                Refresh
+                {t("common.actions.refresh")}
               </button>
             </div>
           </div>
 
           <ProjectListBody
+            locale={locale}
             onArchive={(project) => setArchiveTarget(project)}
             onEdit={(project) => {
               setEditingProject(project as ProjectDetail);
@@ -330,19 +343,19 @@ export function ProjectListPage() {
 
         {archiveTarget ? (
           <ConfirmDialog
-            confirmLabel="Archive Project"
-            description={`Archive ${archiveTarget.name}. Members will still see history, but it will be removed from active project views.`}
+            confirmLabel={t("projects.actions.archiveProject")}
+            description={t("projects.toasts.archiveDescription", { name: archiveTarget.name })}
             onClose={() => setArchiveTarget(null)}
             onConfirm={async () => {
               await archiveProject(archiveTarget.id);
               setToast({
                 kind: "success",
-                message: `Archived project ${archiveTarget.name}.`,
+                message: t("projects.toasts.archiveSuccess", { name: archiveTarget.name }),
               });
               setArchiveTarget(null);
               refresh();
             }}
-            title="Archive Project"
+            title={t("projects.toasts.archiveTitle")}
           />
         ) : null}
 
@@ -357,25 +370,35 @@ function ProjectListBody({
   viewMode,
   onEdit,
   onArchive,
+  locale,
 }: {
   state: ResourceState<PaginatedPayload<ProjectListItem>>;
   viewMode: "table" | "cards";
   onEdit: (project: ProjectListItem) => void;
   onArchive: (project: ProjectListItem) => void;
+  locale: AppLocale;
 }) {
+  const t = useTranslations();
+
   if (state.kind === "loading") {
-    return <div className={styles.placeholder}>Loading projects...</div>;
+    return <div className={styles.placeholder}>{t("common.states.loading")}</div>;
   }
 
   if (state.kind === "error") {
-    return <EmptyState description={state.message} title="Unable to load projects" tone="error" />;
+    return (
+      <EmptyState
+        description={state.message}
+        title={t("projects.errors.list")}
+        tone="error"
+      />
+    );
   }
 
   if (!state.data.items.length) {
     return (
       <EmptyState
-        description="Try broadening the filters or create your first project."
-        title="No Projects Found"
+        description={t("projects.empty.description")}
+        title={t("projects.empty.title")}
       />
     );
   }
@@ -396,29 +419,33 @@ function ProjectListBody({
             </div>
             <div className={styles.metaRow}>
               <PriorityBadge kind="project" value={project.priority} />
-              <span className={styles.chip}>{project.progress}% complete</span>
+              <span className={styles.chip}>
+                {t("projects.card.progress", { value: project.progress })}
+              </span>
             </div>
             <p className={styles.secondaryText}>
-              {project.description || "No description available for this project yet."}
+              {project.description || t("common.states.noDescription")}
             </p>
             <MemberAvatarGroup members={project.members} />
             <div className={styles.progressBar}>
               <div className={styles.progressFill} style={{ width: `${project.progress}%` }} />
             </div>
             <div className={styles.secondaryText}>
-              Deadline {formatDate(project.end_date)}
+              {t("projects.card.deadline", {
+                date: formatDate(project.end_date, locale, t("common.states.none")),
+              })}
             </div>
             <div className={styles.actionBar}>
               <Link className="buttonGhost" href={`/dashboard/projects/${project.id}`}>
-                Open
+                {t("common.actions.open")}
               </Link>
               {project.can_edit ? (
                 <>
                   <button className={styles.smallButton} onClick={() => onEdit(project)} type="button">
-                    Edit
+                    {t("common.actions.edit")}
                   </button>
                   <button className={styles.smallButton} onClick={() => onArchive(project)} type="button">
-                    Archive
+                    {t("projects.actions.archiveProject")}
                   </button>
                 </>
               ) : null}
@@ -434,16 +461,16 @@ function ProjectListBody({
       <table className={styles.table}>
         <thead>
           <tr>
-            <th>Project</th>
-            <th>Status</th>
-            <th>Priority</th>
-            <th>Owner</th>
-            <th>Members</th>
-            <th>Progress</th>
-            <th>Start</th>
-            <th>Deadline</th>
-            <th>Updated</th>
-            <th>Actions</th>
+            <th>{t("projects.table.project")}</th>
+            <th>{t("projects.table.status")}</th>
+            <th>{t("projects.table.priority")}</th>
+            <th>{t("projects.table.owner")}</th>
+            <th>{t("projects.table.members")}</th>
+            <th>{t("projects.table.progress")}</th>
+            <th>{t("projects.table.start")}</th>
+            <th>{t("projects.table.deadline")}</th>
+            <th>{t("projects.table.updated")}</th>
+            <th>{t("projects.table.actions")}</th>
           </tr>
         </thead>
         <tbody>
@@ -459,11 +486,13 @@ function ProjectListBody({
               </td>
               <td><StatusBadge kind="project" value={project.status} /></td>
               <td><PriorityBadge kind="project" value={project.priority} /></td>
-              <td>{project.owner?.display_name || project.owner?.username || "--"}</td>
+              <td>{getUserLabel(project.owner, t("common.states.unassigned"))}</td>
               <td>
                 <div className={styles.primaryCell}>
                   <MemberAvatarGroup members={project.members} />
-                  <span className={styles.secondaryText}>{project.member_count} people</span>
+                  <span className={styles.secondaryText}>
+                    {t("projects.card.memberCount", { count: project.member_count })}
+                  </span>
                 </div>
               </td>
               <td>
@@ -474,21 +503,21 @@ function ProjectListBody({
                   </div>
                 </div>
               </td>
-              <td>{formatDate(project.start_date)}</td>
-              <td>{formatDate(project.end_date)}</td>
-              <td>{formatDateTime(project.updated_at)}</td>
+              <td>{formatDate(project.start_date, locale, t("common.states.none"))}</td>
+              <td>{formatDate(project.end_date, locale, t("common.states.none"))}</td>
+              <td>{formatDateTime(project.updated_at, locale, t("common.states.none"))}</td>
               <td>
                 <div className={styles.actionGroup}>
                   <Link className={styles.linkButton} href={`/dashboard/projects/${project.id}`}>
-                    Open
+                    {t("common.actions.open")}
                   </Link>
                   {project.can_edit ? (
                     <>
                       <button className={styles.smallButton} onClick={() => onEdit(project)} type="button">
-                        Edit
+                        {t("common.actions.edit")}
                       </button>
                       <button className={styles.smallButton} onClick={() => onArchive(project)} type="button">
-                        Archive
+                        {t("projects.actions.archiveProject")}
                       </button>
                     </>
                   ) : null}
@@ -511,6 +540,8 @@ function PaginationFooter({
   onPrev: () => void;
   onNext: () => void;
 }) {
+  const t = useTranslations();
+
   if (state.kind !== "ready") {
     return null;
   }
@@ -518,7 +549,11 @@ function PaginationFooter({
   return (
     <div className={styles.paginationRow}>
       <span className={styles.secondaryText}>
-        Page {pagination.page} / {pagination.pages} | {pagination.count} projects
+        {t("common.pagination.summary", {
+          page: pagination.page,
+          pages: pagination.pages,
+          count: pagination.count,
+        })}
       </span>
       <div className={styles.actionGroup}>
         <button
@@ -527,7 +562,7 @@ function PaginationFooter({
           onClick={onPrev}
           type="button"
         >
-          Previous
+          {t("common.pagination.previous")}
         </button>
         <button
           className={styles.smallButton}
@@ -535,7 +570,7 @@ function PaginationFooter({
           onClick={onNext}
           type="button"
         >
-          Next
+          {t("common.pagination.next")}
         </button>
       </div>
     </div>

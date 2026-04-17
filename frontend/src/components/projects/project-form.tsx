@@ -1,6 +1,7 @@
 "use client";
 
 import { useDeferredValue, useEffect, useMemo, useState, useTransition } from "react";
+import { useTranslations } from "next-intl";
 
 import type { ProjectDetail, UserBrief } from "@/lib/contracts";
 import {
@@ -14,14 +15,14 @@ import { ApiResponseError, extractApiErrorMessage } from "@/lib/api-client";
 import styles from "./projects.module.css";
 import { EmptyState } from "./empty-state";
 import {
+  getProjectPriorityLabel,
+  getProjectStatusLabel,
+  getUserLabel,
   joinTags,
   parseTags,
-  PROJECT_PRIORITY_LABELS,
-  PROJECT_STATUS_LABELS,
+  PROJECT_PRIORITY_VALUES,
+  PROJECT_STATUS_VALUES,
 } from "./project-utils";
-
-const PROJECT_STATUS_OPTIONS = Object.entries(PROJECT_STATUS_LABELS);
-const PROJECT_PRIORITY_OPTIONS = Object.entries(PROJECT_PRIORITY_LABELS);
 
 function mergeUniqueUsers(...groups: Array<UserBrief[]>) {
   const map = new Map<number, UserBrief>();
@@ -31,7 +32,7 @@ function mergeUniqueUsers(...groups: Array<UserBrief[]>) {
     }
   }
   return [...map.values()].sort((left, right) =>
-    (left.display_name || left.username).localeCompare(right.display_name || right.username),
+    getUserLabel(left).localeCompare(getUserLabel(right)),
   );
 }
 
@@ -48,6 +49,7 @@ export function ProjectForm({
   onClose: () => void;
   onSaved: (project: ProjectDetail, message: string) => void;
 }) {
+  const t = useTranslations();
   const [name, setName] = useState(project?.name ?? "");
   const [description, setDescription] = useState(project?.description ?? "");
   const [status, setStatus] = useState(project?.status ?? "not_started");
@@ -115,11 +117,11 @@ export function ProjectForm({
   async function submit() {
     const trimmedName = name.trim();
     if (!trimmedName) {
-      setErrorMessage("Project name is required.");
+      setErrorMessage(t("validation.projectNameRequired"));
       return;
     }
     if (startDate && endDate && endDate < startDate) {
-      setErrorMessage("End date cannot be earlier than start date.");
+      setErrorMessage(t("validation.endDateBeforeStart"));
       return;
     }
 
@@ -144,11 +146,11 @@ export function ProjectForm({
       onSaved(
         saved,
         mode === "create"
-          ? `Created project ${saved.name}.`
-          : `Updated project ${saved.name}.`,
+          ? t("projects.form.createSuccess", { name: saved.name })
+          : t("projects.form.updateSuccess", { name: saved.name }),
       );
     } catch (error) {
-      setErrorMessage(resolveProjectError(error));
+      setErrorMessage(resolveProjectError(error, t("projects.form.saveFailed")));
     }
   }
 
@@ -157,77 +159,83 @@ export function ProjectForm({
       <div className={`surface ${styles.modalPanel}`} role="dialog" aria-modal="true">
         <div className={styles.sectionHeader}>
           <div>
-            <div className="eyebrow">{mode === "create" ? "Create" : "Edit"}</div>
+            <div className="eyebrow">
+              {mode === "create"
+                ? t("projects.form.createEyebrow")
+                : t("projects.form.editEyebrow")}
+            </div>
             <h2 className={styles.projectTitle}>
-              {mode === "create" ? "Project Setup" : "Update Project"}
+              {mode === "create"
+                ? t("projects.form.createTitle")
+                : t("projects.form.editTitle")}
             </h2>
           </div>
           <button className="buttonGhost" onClick={onClose} type="button">
-            Close
+            {t("common.actions.close")}
           </button>
         </div>
 
         {errorMessage ? (
           <EmptyState
             description={errorMessage}
-            title="Unable to save the project"
+            title={t("projects.form.saveFailed")}
             tone="error"
           />
         ) : null}
 
         <div className={styles.formGrid}>
           <label className={`${styles.field} ${styles.fullSpan}`}>
-            <span className={styles.fieldLabel}>Project Name</span>
+            <span className={styles.fieldLabel}>{t("projects.form.name")}</span>
             <input
               className={styles.input}
               onChange={(event) => setName(event.target.value)}
-              placeholder="Enterprise knowledge platform"
+              placeholder={t("projects.form.namePlaceholder")}
               value={name}
             />
           </label>
 
           <label className={`${styles.field} ${styles.fullSpan}`}>
-            <span className={styles.fieldLabel}>Description</span>
+            <span className={styles.fieldLabel}>{t("projects.form.description")}</span>
             <textarea
               className={styles.textarea}
               onChange={(event) => setDescription(event.target.value)}
-              placeholder="Describe project scope, goals, and key risks."
+              placeholder={t("projects.form.descriptionPlaceholder")}
               value={description}
             />
           </label>
 
           <label className={styles.field}>
-            <span className={styles.fieldLabel}>Status</span>
+            <span className={styles.fieldLabel}>{t("projects.form.status")}</span>
             <select
               className={styles.select}
               onChange={(event) => setStatus(event.target.value as typeof status)}
               value={status}
             >
-              {PROJECT_STATUS_OPTIONS.map(([value, label]) => (
+              {PROJECT_STATUS_VALUES.map((value) => (
                 <option key={value} value={value}>
-                  {label}
+                  {getProjectStatusLabel(t, value)}
                 </option>
               ))}
             </select>
           </label>
 
           <label className={styles.field}>
-            <span className={styles.fieldLabel}>Priority</span>
+            <span className={styles.fieldLabel}>{t("projects.form.priority")}</span>
             <select
               className={styles.select}
               onChange={(event) => setPriority(event.target.value as typeof priority)}
               value={priority}
             >
-              {PROJECT_PRIORITY_OPTIONS.map(([value, label]) => (
+              {PROJECT_PRIORITY_VALUES.map((value) => (
                 <option key={value} value={value}>
-                  {label}
+                  {getProjectPriorityLabel(t, value)}
                 </option>
               ))}
             </select>
           </label>
 
           <label className={styles.field}>
-            <span className={styles.fieldLabel}>Owner</span>
+            <span className={styles.fieldLabel}>{t("projects.form.owner")}</span>
             <select
               className={styles.select}
               onChange={(event) => setOwnerId(Number(event.target.value))}
@@ -242,17 +250,17 @@ export function ProjectForm({
           </label>
 
           <label className={styles.field}>
-            <span className={styles.fieldLabel}>Tags</span>
+            <span className={styles.fieldLabel}>{t("projects.form.tags")}</span>
             <input
               className={styles.input}
               onChange={(event) => setTagsInput(event.target.value)}
-              placeholder="infra, backend, delivery"
+              placeholder={t("projects.form.tagsPlaceholder")}
               value={tagsInput}
             />
           </label>
 
           <label className={styles.field}>
-            <span className={styles.fieldLabel}>Start Date</span>
+            <span className={styles.fieldLabel}>{t("projects.form.startDate")}</span>
             <input
               className={styles.input}
               onChange={(event) => setStartDate(event.target.value)}
@@ -262,7 +270,7 @@ export function ProjectForm({
           </label>
 
           <label className={styles.field}>
-            <span className={styles.fieldLabel}>End Date</span>
+            <span className={styles.fieldLabel}>{t("projects.form.endDate")}</span>
             <input
               className={styles.input}
               onChange={(event) => setEndDate(event.target.value)}
@@ -272,11 +280,11 @@ export function ProjectForm({
           </label>
 
           <div className={`${styles.field} ${styles.fullSpan}`}>
-            <span className={styles.fieldLabel}>Members</span>
+            <span className={styles.fieldLabel}>{t("projects.form.members")}</span>
             <input
               className={styles.input}
               onChange={(event) => setMemberKeyword(event.target.value)}
-              placeholder="Search username, real name, or email"
+              placeholder={t("projects.form.memberSearchPlaceholder")}
               value={memberKeyword}
             />
             <div className={styles.pickerPanel}>
@@ -303,7 +311,7 @@ export function ProjectForm({
                   })}
                 </div>
               ) : (
-                <div className={styles.placeholder}>No available members found.</div>
+                <div className={styles.placeholder}>{t("projects.form.noMembersFound")}</div>
               )}
             </div>
           </div>
@@ -311,7 +319,7 @@ export function ProjectForm({
 
         <div className={styles.actionBar}>
           <button className="buttonGhost" onClick={onClose} type="button">
-            Cancel
+            {t("common.actions.cancel")}
           </button>
           <button
             className="button"
@@ -323,7 +331,11 @@ export function ProjectForm({
             }
             type="button"
           >
-            {isPending ? "Saving..." : mode === "create" ? "Create Project" : "Save Changes"}
+            {isPending
+              ? t("common.actions.save")
+              : mode === "create"
+                ? t("projects.form.submitCreate")
+                : t("common.actions.saveChanges")}
           </button>
         </div>
       </div>
@@ -331,16 +343,16 @@ export function ProjectForm({
   );
 }
 
-function resolveProjectError(error: unknown) {
+function resolveProjectError(error: unknown, fallback: string) {
   if (error instanceof ApiResponseError) {
     return (
       error.message ||
       extractApiErrorMessage(error.data) ||
-      "Unable to save the project."
+      fallback
     );
   }
   if (error instanceof Error) {
     return error.message;
   }
-  return "Unable to save the project.";
+  return fallback;
 }

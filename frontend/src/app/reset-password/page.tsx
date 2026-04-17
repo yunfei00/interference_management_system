@@ -6,8 +6,8 @@ import { ResetPasswordForm } from "@/components/reset-password-form";
 export default function ResetPasswordPage() {
   return (
     <PublicAuthLayout
-      title="Reset Password"
-      description="Reset your password using the one-time token delivered through the configured email backend."
+      titleKey="auth.reset.title"
+      descriptionKey="auth.reset.subtitle"
     >
       <Suspense fallback={null}>
         <ResetPasswordForm />

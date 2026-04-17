@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslations } from "next-intl";
+
 import type { UserBrief } from "@/lib/contracts";
 
 import styles from "./projects.module.css";
@@ -12,8 +14,10 @@ export function MemberAvatarGroup({
   members: UserBrief[];
   maxVisible?: number;
 }) {
+  const t = useTranslations();
+
   if (!members.length) {
-    return <span className={styles.secondaryText}>No members</span>;
+    return <span className={styles.secondaryText}>{t("common.states.noMembers")}</span>;
   }
 
   const visibleMembers = members.slice(0, maxVisible);
@@ -25,13 +29,13 @@ export function MemberAvatarGroup({
         <span
           className={styles.avatar}
           key={member.id}
-          title={getUserLabel(member)}
+          title={getUserLabel(member, t("common.states.unassigned"))}
         >
           {getInitials(member)}
         </span>
       ))}
       {extraCount > 0 ? (
-        <span className={styles.avatar} title={`${extraCount} more members`}>
+        <span className={styles.avatar} title={t("projects.card.memberCount", { count: extraCount })}>
           +{extraCount}
         </span>
       ) : null}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 import type { ApiEnvelope } from "@/lib/contracts";
@@ -28,6 +29,7 @@ function extractError(payload: ApiEnvelope<unknown> | null, fallback: string) {
 export function ChangePasswordPage() {
   const router = useRouter();
   const { state, refreshSession } = useDashboardSession();
+  const t = useTranslations();
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -49,11 +51,11 @@ export function ChangePasswordPage() {
     const confirmPassword = String(formData.get("confirm_password") ?? "");
 
     if (!currentPassword || !newPassword || !confirmPassword) {
-      setError("Please complete all password fields.");
+      setError(t("validation.completePasswordFields"));
       return;
     }
     if (newPassword !== confirmPassword) {
-      setError("The two password entries do not match.");
+      setError(t("validation.passwordMismatch"));
       return;
     }
 
@@ -70,11 +72,11 @@ export function ChangePasswordPage() {
     const payload = (await response.json()) as ApiEnvelope<unknown> | null;
     setPending(false);
     if (!response.ok || !payload?.success) {
-      setError(extractError(payload, "Unable to change the password."));
+      setError(extractError(payload, t("auth.changePassword.failed")));
       return;
     }
 
-    setMessage(payload.message || "Password updated successfully.");
+    setMessage(payload.message || t("auth.changePassword.success"));
     (event.currentTarget as HTMLFormElement).reset();
     refreshSession();
     if (mustChangePassword) {
@@ -86,16 +88,12 @@ export function ChangePasswordPage() {
   return (
     <div className={styles.page}>
       <section className={`surface ${styles.panel}`}>
-        <div className="eyebrow">Security</div>
-        <h1 className={styles.title}>Change Password</h1>
-        <p className={styles.text}>
-          Update your password here. Backend validation and forced-password-change rules are enforced server-side.
-        </p>
+        <div className="eyebrow">{t("auth.changePassword.eyebrow")}</div>
+        <h1 className={styles.title}>{t("auth.changePassword.title")}</h1>
+        <p className={styles.text}>{t("auth.changePassword.subtitle")}</p>
 
         {mustChangePassword ? (
-          <div className={styles.alert}>
-            Your password was reset by an administrator. You must update it before you can access any other page.
-          </div>
+          <div className={styles.alert}>{t("auth.changePassword.mustChangeAlert")}</div>
         ) : null}
 
         {error ? <div className={styles.alert}>{error}</div> : null}
@@ -103,7 +101,7 @@ export function ChangePasswordPage() {
 
         <form className={styles.grid} onSubmit={handleSubmit}>
           <label className={styles.field}>
-            <span className={styles.label}>Current Password</span>
+            <span className={styles.label}>{t("auth.changePassword.currentPassword")}</span>
             <input
               autoComplete="current-password"
               className={styles.input}
@@ -112,7 +110,7 @@ export function ChangePasswordPage() {
             />
           </label>
           <label className={styles.field}>
-            <span className={styles.label}>New Password</span>
+            <span className={styles.label}>{t("auth.changePassword.newPassword")}</span>
             <input
               autoComplete="new-password"
               className={styles.input}
@@ -121,7 +119,7 @@ export function ChangePasswordPage() {
             />
           </label>
           <label className={styles.field}>
-            <span className={styles.label}>Confirm New Password</span>
+            <span className={styles.label}>{t("auth.changePassword.confirmPassword")}</span>
             <input
               autoComplete="new-password"
               className={styles.input}
@@ -131,7 +129,9 @@ export function ChangePasswordPage() {
           </label>
           <div className={styles.actions}>
             <button className="button" disabled={pending} type="submit">
-              {pending ? "Saving..." : "Update Password"}
+              {pending
+                ? t("auth.changePassword.submitting")
+                : t("auth.changePassword.submit")}
             </button>
           </div>
         </form>

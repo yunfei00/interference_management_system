@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 
 import type { ApiEnvelope, RegistrationDepartmentOption } from "@/lib/contracts";
 import { apiFetch } from "@/lib/api-client";
@@ -37,6 +38,7 @@ export function RegisterForm({
 }: {
   onSwitchToLogin: () => void;
 }) {
+  const t = useTranslations();
   const [departments, setDepartments] = useState<RegistrationDepartmentOption[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -55,20 +57,20 @@ export function RegisterForm({
           return;
         }
         if (!response.ok || !payload.success || !Array.isArray(payload.data)) {
-          setLoadError(payload.message || "Unable to load department options.");
+          setLoadError(payload.message || t("auth.register.loadDepartmentsFailed"));
           return;
         }
         setDepartments(payload.data);
       } catch {
         if (!cancelled) {
-          setLoadError("Unable to load department options.");
+          setLoadError(t("auth.register.loadDepartmentsFailed"));
         }
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [t]);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -87,15 +89,17 @@ export function RegisterForm({
     const confirmPassword = String(formData.get("confirm_password") ?? "");
 
     if (!username || !email || !realName || !password) {
-      setError("Username, email, real name, and password are required.");
+      setError(
+        `${t("auth.register.username")}, ${t("auth.register.email")}, ${t("auth.register.realName")}, ${t("auth.register.password")} ${t("validation.required")}`,
+      );
       return;
     }
     if (password.length < 8) {
-      setError("Password must be at least 8 characters long.");
+      setError(t("validation.passwordTooShort"));
       return;
     }
     if (password !== confirmPassword) {
-      setError("The two password entries do not match.");
+      setError(t("validation.passwordMismatch"));
       return;
     }
 
@@ -134,17 +138,16 @@ export function RegisterForm({
       > | null;
 
       if (!response.ok || !payload?.success) {
-        setError(pickRegisterError(payload, "Registration failed. Please check the form and try again."));
+        setError(
+          pickRegisterError(payload, t("auth.register.submitFailed")),
+        );
         return;
       }
 
-      setSuccess(
-        payload.message ||
-          "Registration submitted successfully. Please wait for administrator approval.",
-      );
+      setSuccess(payload.message || t("auth.register.success"));
       (event.currentTarget as HTMLFormElement).reset();
     } catch {
-      setError("Registration failed. Please try again later.");
+      setError(t("auth.register.submitFailed"));
     } finally {
       setSubmitting(false);
     }
@@ -154,16 +157,14 @@ export function RegisterForm({
     <section className={`surface ${styles.card}`}>
       <div className={styles.header}>
         <div className={styles.headerTop}>
-          <div className="eyebrow">Enterprise Account</div>
+          <div className="eyebrow">{t("auth.register.eyebrow")}</div>
           <div className={styles.secureBadge}>
             <span className={styles.secureDot} />
-            Approval Required
+            {t("auth.register.badge")}
           </div>
         </div>
-        <h1 className={styles.title}>Register</h1>
-        <p className={styles.subtitle}>
-          Submit your details and wait for administrator approval before signing in.
-        </p>
+        <h1 className={styles.title}>{t("auth.register.title")}</h1>
+        <p className={styles.subtitle}>{t("auth.register.subtitle")}</p>
       </div>
 
       {loadError ? <div className={styles.error}>{loadError}</div> : null}
@@ -173,22 +174,22 @@ export function RegisterForm({
       <form className={styles.form} onSubmit={handleSubmit}>
         <label className={styles.field}>
           <div className={styles.labelRow}>
-            <span className={styles.label}>Username</span>
-            <span className={styles.fieldHint}>Required</span>
+            <span className={styles.label}>{t("auth.register.username")}</span>
+            <span className={styles.fieldHint}>{t("validation.required")}</span>
           </div>
           <input className={styles.input} name="username" required type="text" />
         </label>
 
         <label className={styles.field}>
           <div className={styles.labelRow}>
-            <span className={styles.label}>Email</span>
-            <span className={styles.fieldHint}>Required</span>
+            <span className={styles.label}>{t("auth.register.email")}</span>
+            <span className={styles.fieldHint}>{t("validation.required")}</span>
           </div>
           <input
             autoComplete="email"
             className={styles.input}
             name="email"
-            placeholder="name@company.com"
+            placeholder={t("auth.register.emailPlaceholder")}
             required
             type="email"
           />
@@ -196,43 +197,53 @@ export function RegisterForm({
 
         <label className={styles.field}>
           <div className={styles.labelRow}>
-            <span className={styles.label}>Real Name</span>
-            <span className={styles.fieldHint}>Required</span>
+            <span className={styles.label}>{t("auth.register.realName")}</span>
+            <span className={styles.fieldHint}>{t("validation.required")}</span>
           </div>
           <input className={styles.input} name="real_name" required type="text" />
         </label>
 
         <label className={styles.field}>
           <div className={styles.labelRow}>
-            <span className={styles.label}>Company</span>
-            <span className={styles.fieldHint}>Optional</span>
+            <span className={styles.label}>{t("auth.register.company")}</span>
+            <span className={styles.fieldHint}>{t("validation.optional")}</span>
           </div>
-          <input className={styles.input} name="company" placeholder="Company name" type="text" />
+          <input
+            className={styles.input}
+            name="company"
+            placeholder={t("auth.register.companyPlaceholder")}
+            type="text"
+          />
         </label>
 
         <label className={styles.field}>
           <div className={styles.labelRow}>
-            <span className={styles.label}>Phone</span>
-            <span className={styles.fieldHint}>Optional</span>
+            <span className={styles.label}>{t("auth.register.phone")}</span>
+            <span className={styles.fieldHint}>{t("validation.optional")}</span>
           </div>
           <input autoComplete="tel" className={styles.input} name="phone" type="tel" />
         </label>
 
         <label className={styles.field}>
           <div className={styles.labelRow}>
-            <span className={styles.label}>Title</span>
-            <span className={styles.fieldHint}>Optional</span>
+            <span className={styles.label}>{t("auth.register.titleField")}</span>
+            <span className={styles.fieldHint}>{t("validation.optional")}</span>
           </div>
-          <input className={styles.input} name="title" placeholder="Job title" type="text" />
+          <input
+            className={styles.input}
+            name="title"
+            placeholder={t("auth.register.titlePlaceholder")}
+            type="text"
+          />
         </label>
 
         <label className={styles.field}>
           <div className={styles.labelRow}>
-            <span className={styles.label}>Department</span>
-            <span className={styles.fieldHint}>Optional</span>
+            <span className={styles.label}>{t("auth.register.department")}</span>
+            <span className={styles.fieldHint}>{t("validation.optional")}</span>
           </div>
           <select className={styles.input} defaultValue="" name="department">
-            <option value="">Not assigned yet</option>
+            <option value="">{t("auth.register.departmentPlaceholder")}</option>
             {departments.map((department) => (
               <option key={department.id} value={department.id}>
                 {department.full_name}
@@ -243,8 +254,8 @@ export function RegisterForm({
 
         <label className={styles.field}>
           <div className={styles.labelRow}>
-            <span className={styles.label}>Password</span>
-            <span className={styles.fieldHint}>At least 8 characters</span>
+            <span className={styles.label}>{t("auth.register.password")}</span>
+            <span className={styles.fieldHint}>{t("validation.atLeast8")}</span>
           </div>
           <input
             autoComplete="new-password"
@@ -257,8 +268,8 @@ export function RegisterForm({
 
         <label className={styles.field}>
           <div className={styles.labelRow}>
-            <span className={styles.label}>Confirm Password</span>
-            <span className={styles.fieldHint}>Repeat it</span>
+            <span className={styles.label}>{t("auth.register.confirmPassword")}</span>
+            <span className={styles.fieldHint}>{t("validation.repeatIt")}</span>
           </div>
           <input
             autoComplete="new-password"
@@ -270,15 +281,15 @@ export function RegisterForm({
         </label>
 
         <button className={styles.submitButton} disabled={submitting} type="submit">
-          {submitting ? "Submitting..." : "Submit Registration"}
+          {submitting ? t("auth.register.submitting") : t("auth.register.submit")}
         </button>
       </form>
 
       <div className={styles.footer}>
         <p>
-          Already have an account?
+          {t("auth.register.signInPrompt")}
           <button className={styles.inlineLink} onClick={onSwitchToLogin} type="button">
-            Sign in
+            {t("auth.register.signInLink")}
           </button>
         </p>
       </div>

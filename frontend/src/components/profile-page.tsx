@@ -1,10 +1,13 @@
 "use client";
 
+import { useTranslations } from "next-intl";
+
 import { useDashboardSession } from "./dashboard-session-provider";
 import styles from "./account-settings.module.css";
 
 export function ProfilePage() {
   const { state } = useDashboardSession();
+  const t = useTranslations();
 
   if (state.kind !== "ready") {
     return null;
@@ -15,42 +18,40 @@ export function ProfilePage() {
   return (
     <div className={styles.page}>
       <section className={`surface ${styles.panel}`}>
-        <div className="eyebrow">My Account</div>
-        <h1 className={styles.title}>Profile</h1>
-        <p className={styles.text}>
-          Personal information is sourced from the backend session and user directory.
-        </p>
+        <div className="eyebrow">{t("auth.profile.eyebrow")}</div>
+        <h1 className={styles.title}>{t("auth.profile.title")}</h1>
+        <p className={styles.text}>{t("auth.profile.subtitle")}</p>
         <div className={styles.grid}>
           <div className={styles.field}>
-            <span className={styles.label}>Username</span>
+            <span className={styles.label}>{t("auth.profile.username")}</span>
             <div className={styles.value}>{user.username}</div>
           </div>
           <div className={styles.field}>
-            <span className={styles.label}>Real Name</span>
+            <span className={styles.label}>{t("auth.profile.realName")}</span>
             <div className={styles.value}>{user.real_name || "-"}</div>
           </div>
           <div className={styles.field}>
-            <span className={styles.label}>Email</span>
+            <span className={styles.label}>{t("auth.profile.email")}</span>
             <div className={styles.value}>{user.email || "-"}</div>
           </div>
           <div className={styles.field}>
-            <span className={styles.label}>Phone</span>
+            <span className={styles.label}>{t("auth.profile.phone")}</span>
             <div className={styles.value}>{user.phone || "-"}</div>
           </div>
           <div className={styles.field}>
-            <span className={styles.label}>Department</span>
+            <span className={styles.label}>{t("auth.profile.department")}</span>
             <div className={styles.value}>{user.department_full_name || "-"}</div>
           </div>
           <div className={styles.field}>
-            <span className={styles.label}>Title</span>
+            <span className={styles.label}>{t("auth.profile.titleField")}</span>
             <div className={styles.value}>{user.title || "-"}</div>
           </div>
           <div className={styles.field}>
-            <span className={styles.label}>Role</span>
+            <span className={styles.label}>{t("auth.profile.role")}</span>
             <div className={styles.value}>{user.role_name}</div>
           </div>
           <div className={styles.field}>
-            <span className={styles.label}>Status</span>
+            <span className={styles.label}>{t("auth.profile.status")}</span>
             <div className={styles.value}>{user.status_name}</div>
           </div>
         </div>

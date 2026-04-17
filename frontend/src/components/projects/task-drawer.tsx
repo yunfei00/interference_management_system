@@ -1,8 +1,10 @@
 "use client";
 
+import { useLocale, useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 
 import type { AttachmentItem, ProjectActivityItem, TaskDetail } from "@/lib/contracts";
+import type { AppLocale } from "@/i18n/config";
 import { deleteAttachment, uploadAttachment } from "@/lib/api/projects";
 import { ApiResponseError, extractApiErrorMessage } from "@/lib/api-client";
 
@@ -38,6 +40,8 @@ export function TaskDrawer({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
   const [isPending, startTransition] = useTransition();
+  const t = useTranslations();
+  const locale = useLocale() as AppLocale;
 
   async function uploadSelectedFile() {
     if (!task || !selectedFile) {
@@ -48,7 +52,7 @@ export function TaskDrawer({
       setSelectedFile(null);
       onAttachmentChanged();
     } catch (error) {
-      setErrorMessage(resolveDrawerError(error));
+      setErrorMessage(resolveDrawerError(error, t("tasks.drawer.actionFailed")));
     }
   }
 
@@ -57,7 +61,7 @@ export function TaskDrawer({
       await deleteAttachment(attachment.id);
       onAttachmentChanged();
     } catch (error) {
-      setErrorMessage(resolveDrawerError(error));
+      setErrorMessage(resolveDrawerError(error, t("tasks.drawer.actionFailed")));
     }
   }
 
@@ -66,20 +70,22 @@ export function TaskDrawer({
       <aside className={`surface ${styles.drawerPanel}`} role="dialog" aria-modal="true">
         <div className={styles.sectionHeader}>
           <div>
-            <div className="eyebrow">Task Detail</div>
-            <h2 className={styles.projectTitle}>{task?.title || "Loading task..."}</h2>
+            <div className="eyebrow">{t("tasks.drawer.eyebrow")}</div>
+            <h2 className={styles.projectTitle}>
+              {task?.title || t("tasks.drawer.loadingTitle")}
+            </h2>
           </div>
           <button className="buttonGhost" onClick={onClose} type="button">
-            Close
+            {t("common.actions.close")}
           </button>
         </div>
 
-        {loading ? <div className={styles.placeholder}>Loading task details...</div> : null}
+        {loading ? <div className={styles.placeholder}>{t("tasks.drawer.loading")}</div> : null}
 
         {!loading && !task ? (
           <EmptyState
-            description="The selected task could not be loaded."
-            title="Task Unavailable"
+            description={t("tasks.drawer.unavailableDescription")}
+            title={t("tasks.drawer.unavailableTitle")}
             tone="error"
           />
         ) : null}
@@ -89,7 +95,7 @@ export function TaskDrawer({
             {errorMessage ? (
               <EmptyState
                 description={errorMessage}
-                title="Action failed"
+                title={t("tasks.drawer.actionFailedTitle")}
                 tone="error"
               />
             ) : null}
@@ -97,59 +103,65 @@ export function TaskDrawer({
             <div className={styles.metaRow}>
               <StatusBadge kind="task" value={task.status} />
               <PriorityBadge kind="task" value={task.priority} />
-              <span className={styles.chip}>{task.progress}% progress</span>
+              <span className={styles.chip}>
+                {t("tasks.drawer.progress", { value: task.progress })}
+              </span>
             </div>
 
             <div className={styles.detailList}>
               <div className={styles.detailRow}>
-                <span className={styles.fieldLabel}>Assignee</span>
-                <span>{getUserLabel(task.assignee)}</span>
+                <span className={styles.fieldLabel}>{t("tasks.drawer.assignee")}</span>
+                <span>{getUserLabel(task.assignee, t("common.states.unassigned"))}</span>
               </div>
               <div className={styles.detailRow}>
-                <span className={styles.fieldLabel}>Milestone</span>
-                <span>{task.milestone?.name || "--"}</span>
+                <span className={styles.fieldLabel}>{t("tasks.drawer.milestone")}</span>
+                <span>{task.milestone?.name || t("common.states.none")}</span>
               </div>
               <div className={styles.detailRow}>
-                <span className={styles.fieldLabel}>Start</span>
-                <span>{formatDate(task.start_date)}</span>
+                <span className={styles.fieldLabel}>{t("tasks.drawer.start")}</span>
+                <span>{formatDate(task.start_date, locale, t("common.states.none"))}</span>
               </div>
               <div className={styles.detailRow}>
-                <span className={styles.fieldLabel}>Due</span>
-                <span>{formatDate(task.due_date)}</span>
+                <span className={styles.fieldLabel}>{t("tasks.drawer.due")}</span>
+                <span>{formatDate(task.due_date, locale, t("common.states.none"))}</span>
               </div>
               <div className={styles.detailRow}>
-                <span className={styles.fieldLabel}>Estimated</span>
-                <span>{task.estimated_hours || "--"}</span>
+                <span className={styles.fieldLabel}>{t("tasks.drawer.estimated")}</span>
+                <span>{task.estimated_hours || t("common.states.none")}</span>
               </div>
               <div className={styles.detailRow}>
-                <span className={styles.fieldLabel}>Actual</span>
-                <span>{task.actual_hours || "--"}</span>
+                <span className={styles.fieldLabel}>{t("tasks.drawer.actual")}</span>
+                <span>{task.actual_hours || t("common.states.none")}</span>
               </div>
             </div>
 
             <div className={styles.sectionHeader}>
-              <h3 className={styles.projectTitle}>Description</h3>
+              <h3 className={styles.projectTitle}>{t("tasks.drawer.description")}</h3>
             </div>
-            <div className={styles.placeholder}>{task.description || "No description provided."}</div>
+            <div className={styles.placeholder}>{task.description || t("tasks.drawer.descriptionEmpty")}</div>
 
             <div className={styles.sectionHeader}>
-              <h3 className={styles.projectTitle}>Subtasks</h3>
+              <h3 className={styles.projectTitle}>{t("tasks.drawer.subtasks")}</h3>
             </div>
             {task.subtasks.length ? (
               <div className={styles.taskList}>
                 {task.subtasks.map((subtask) => (
                   <div className={styles.listRow} key={subtask.id}>
                     <span>{subtask.title}</span>
-                    <span className={styles.chip}>{subtask.is_done ? "Done" : "Open"}</span>
+                    <span className={styles.chip}>
+                      {subtask.is_done
+                        ? t("tasks.drawer.subtaskDone")
+                        : t("tasks.drawer.subtaskOpen")}
+                    </span>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className={styles.placeholder}>No subtasks.</div>
+              <div className={styles.placeholder}>{t("tasks.drawer.subtasksEmpty")}</div>
             )}
 
             <div className={styles.sectionHeader}>
-              <h3 className={styles.projectTitle}>Dependencies</h3>
+              <h3 className={styles.projectTitle}>{t("tasks.drawer.dependencies")}</h3>
             </div>
             {task.dependencies.length ? (
               <div className={styles.taskList}>
@@ -161,11 +173,11 @@ export function TaskDrawer({
                 ))}
               </div>
             ) : (
-              <div className={styles.placeholder}>No dependencies.</div>
+              <div className={styles.placeholder}>{t("tasks.drawer.dependenciesEmpty")}</div>
             )}
 
             <div className={styles.sectionHeader}>
-              <h3 className={styles.projectTitle}>Attachments</h3>
+              <h3 className={styles.projectTitle}>{t("tasks.drawer.attachments")}</h3>
             </div>
             <div className={styles.actionBar}>
               <input
@@ -183,7 +195,7 @@ export function TaskDrawer({
                 }
                 type="button"
               >
-                {isPending ? "Uploading..." : "Upload Attachment"}
+                {isPending ? t("tasks.drawer.uploading") : t("tasks.drawer.upload")}
               </button>
             </div>
 
@@ -200,7 +212,8 @@ export function TaskDrawer({
                         {attachment.file_name}
                       </a>
                       <span className={styles.secondaryText}>
-                        {formatFileSize(attachment.file_size)} | {getUserLabel(attachment.uploaded_by)}
+                        {formatFileSize(attachment.file_size)} |{" "}
+                        {getUserLabel(attachment.uploaded_by, t("common.states.unassigned"))}
                       </span>
                     </div>
                     <button
@@ -210,36 +223,36 @@ export function TaskDrawer({
                       }}
                       type="button"
                     >
-                      Delete
+                      {t("common.actions.delete")}
                     </button>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className={styles.placeholder}>No attachments uploaded for this task.</div>
+              <div className={styles.placeholder}>{t("tasks.drawer.attachmentsEmpty")}</div>
             )}
 
             <div className={styles.sectionHeader}>
-              <h3 className={styles.projectTitle}>Recent Activity</h3>
+              <h3 className={styles.projectTitle}>{t("tasks.drawer.recentActivity")}</h3>
             </div>
             <ActivityTimeline
               activities={activities}
-              emptyText="No recent task activity recorded yet."
+              emptyText={t("activity.emptyDescription")}
             />
 
             <div className={styles.sectionHeader}>
-              <h3 className={styles.projectTitle}>Comments</h3>
+              <h3 className={styles.projectTitle}>{t("tasks.drawer.comments")}</h3>
             </div>
             <div className={styles.placeholder}>
-              Comments will be added in a future iteration. The drawer keeps this space reserved for the extension.
+              {t("tasks.drawer.commentsPlaceholder")}
             </div>
 
             <div className={styles.actionBar}>
               <button className="buttonGhost" onClick={() => onEdit(task)} type="button">
-                Edit Task
+                {t("tasks.drawer.editTask")}
               </button>
               <button className="button" onClick={() => onDelete(task)} type="button">
-                Delete Task
+                {t("tasks.drawer.deleteTask")}
               </button>
             </div>
           </>
@@ -249,16 +262,16 @@ export function TaskDrawer({
   );
 }
 
-function resolveDrawerError(error: unknown) {
+function resolveDrawerError(error: unknown, fallback: string) {
   if (error instanceof ApiResponseError) {
     return (
       error.message ||
       extractApiErrorMessage(error.data) ||
-      "Unable to complete the task action."
+      fallback
     );
   }
   if (error instanceof Error) {
     return error.message;
   }
-  return "Unable to complete the task action.";
+  return fallback;
 }

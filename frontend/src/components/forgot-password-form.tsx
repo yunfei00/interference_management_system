@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 
 import type { ApiEnvelope } from "@/lib/contracts";
 import { apiFetch } from "@/lib/api-client";
@@ -25,6 +26,7 @@ function extractError(payload: ApiEnvelope<unknown> | null, fallback: string) {
 }
 
 export function ForgotPasswordForm() {
+  const t = useTranslations();
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -36,7 +38,7 @@ export function ForgotPasswordForm() {
     const formData = new FormData(event.currentTarget);
     const email = String(formData.get("email") ?? "").trim();
     if (!email) {
-      setError("Email is required.");
+      setError(t("validation.emailRequired"));
       return;
     }
 
@@ -49,13 +51,10 @@ export function ForgotPasswordForm() {
     const payload = (await response.json()) as ApiEnvelope<unknown> | null;
     setPending(false);
     if (!response.ok || !payload?.success) {
-      setError(extractError(payload, "Unable to request a password reset."));
+      setError(extractError(payload, t("auth.forgot.failed")));
       return;
     }
-    setMessage(
-      payload.message ||
-        "If the account exists, a password reset email has been sent.",
-    );
+    setMessage(payload.message || t("auth.forgot.success"));
     (event.currentTarget as HTMLFormElement).reset();
   }
 
@@ -63,16 +62,14 @@ export function ForgotPasswordForm() {
     <section className={`surface ${styles.card}`}>
       <div className={styles.header}>
         <div className={styles.headerTop}>
-          <div className="eyebrow">Password Recovery</div>
+          <div className="eyebrow">{t("auth.forgot.eyebrow")}</div>
           <div className={styles.secureBadge}>
             <span className={styles.secureDot} />
-            Email Safe
+            {t("auth.forgot.badge")}
           </div>
         </div>
-        <h1 className={styles.title}>Forgot Password</h1>
-        <p className={styles.subtitle}>
-          Enter your account email. We will always return the same response so account existence is never disclosed.
-        </p>
+        <h1 className={styles.title}>{t("auth.forgot.title")}</h1>
+        <p className={styles.subtitle}>{t("auth.forgot.subtitle")}</p>
       </div>
 
       {error ? <div className={styles.error}>{error}</div> : null}
@@ -81,21 +78,21 @@ export function ForgotPasswordForm() {
       <form className={styles.form} onSubmit={handleSubmit}>
         <label className={styles.field}>
           <div className={styles.labelRow}>
-            <span className={styles.label}>Email</span>
-            <span className={styles.fieldHint}>Required</span>
+            <span className={styles.label}>{t("auth.forgot.email")}</span>
+            <span className={styles.fieldHint}>{t("validation.required")}</span>
           </div>
           <input className={styles.input} name="email" required type="email" />
         </label>
         <button className={styles.submitButton} disabled={pending} type="submit">
-          {pending ? "Submitting..." : "Send Reset Link"}
+          {pending ? t("auth.forgot.submitting") : t("auth.forgot.submit")}
         </button>
       </form>
 
       <div className={styles.footer}>
         <p>
-          Remembered your password?
+          {t("auth.forgot.remembered")}
           <Link className={styles.inlineLink} href="/login">
-            Back to login
+            {t("auth.forgot.backToLogin")}
           </Link>
         </p>
       </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 
 import type {
@@ -14,6 +15,7 @@ import type {
   TaskListItem,
   TaskStatus,
 } from "@/lib/contracts";
+import type { AppLocale } from "@/i18n/config";
 import {
   archiveProject,
   deleteAttachment,
@@ -47,8 +49,12 @@ import {
   formatDate,
   formatDateTime,
   formatFileSize,
+  getTaskPriorityLabel,
+  getTaskStatusLabel,
   getUserLabel,
   optimisticMoveTasks,
+  TASK_PRIORITY_VALUES,
+  TASK_STATUS_VALUES,
 } from "./project-utils";
 import { StatusBadge } from "./status-badge";
 import { TaskDrawer } from "./task-drawer";
@@ -62,19 +68,21 @@ type ResourceState<T> =
 
 type DetailTab = "overview" | "kanban" | "tasks" | "milestones" | "attachments" | "activity";
 
-const DETAIL_TABS: Array<{ key: DetailTab; label: string }> = [
-  { key: "overview", label: "Overview" },
-  { key: "kanban", label: "Kanban" },
-  { key: "tasks", label: "Tasks" },
-  { key: "milestones", label: "Milestones" },
-  { key: "attachments", label: "Attachments" },
-  { key: "activity", label: "Activity" },
+const DETAIL_TABS: DetailTab[] = [
+  "overview",
+  "kanban",
+  "tasks",
+  "milestones",
+  "attachments",
+  "activity",
 ];
 
 export function ProjectDetailPage({ projectId }: { projectId: number }) {
   const { state: session } = useDashboardSession();
   const ready = session.kind === "ready";
   const currentUserId = ready ? session.data.user.id : 0;
+  const t = useTranslations();
+  const locale = useLocale() as AppLocale;
 
   const [activeTab, setActiveTab] = useState<DetailTab>("overview");
   const [toast, setToast] = useState<ToastState>(null);
@@ -196,16 +204,16 @@ export function ProjectDetailPage({ projectId }: { projectId: number }) {
         return;
       }
 
-      setDashboardState(resolveSettled(dashboardResult, "Unable to load project overview."));
+      setDashboardState(resolveSettled(dashboardResult, t("projects.errors.overview")));
       setBoardState(
         boardResult.status === "fulfilled"
           ? { kind: "ready", data: boardResult.value.items }
-          : { kind: "error", message: resolveError(boardResult.reason, "Unable to load board tasks.") },
+          : { kind: "error", message: resolveError(boardResult.reason, t("projects.errors.kanban")) },
       );
       setMilestonesState(
         milestonesResult.status === "fulfilled"
           ? { kind: "ready", data: milestonesResult.value }
-          : { kind: "error", message: resolveError(milestonesResult.reason, "Unable to load milestones.") },
+          : { kind: "error", message: resolveError(milestonesResult.reason, t("projects.errors.milestones")) },
       );
     }
 
@@ -213,7 +221,7 @@ export function ProjectDetailPage({ projectId }: { projectId: number }) {
     return () => {
       cancelled = true;
     };
-  }, [coreReloadKey, projectId, ready]);
+  }, [coreReloadKey, projectId, ready, t]);
 
   useEffect(() => {
     if (!ready || activeTab !== "tasks") {
@@ -229,7 +237,7 @@ export function ProjectDetailPage({ projectId }: { projectId: number }) {
         }
       } catch (error) {
         if (!cancelled) {
-          setTaskListState({ kind: "error", message: resolveError(error, "Unable to load tasks.") });
+          setTaskListState({ kind: "error", message: resolveError(error, t("projects.errors.tasks")) });
         }
       }
     }
@@ -237,7 +245,7 @@ export function ProjectDetailPage({ projectId }: { projectId: number }) {
     return () => {
       cancelled = true;
     };
-  }, [activeTab, projectId, ready, taskListQuery, taskReloadKey]);
+  }, [activeTab, projectId, ready, t, taskListQuery, taskReloadKey]);
 
   useEffect(() => {
     if (!ready || activeTab !== "attachments") {
@@ -253,7 +261,7 @@ export function ProjectDetailPage({ projectId }: { projectId: number }) {
         }
       } catch (error) {
         if (!cancelled) {
-          setAttachmentsState({ kind: "error", message: resolveError(error, "Unable to load attachments.") });
+          setAttachmentsState({ kind: "error", message: resolveError(error, t("projects.errors.attachments")) });
         }
       }
     }
@@ -261,7 +269,7 @@ export function ProjectDetailPage({ projectId }: { projectId: number }) {
     return () => {
       cancelled = true;
     };
-  }, [activeTab, attachmentPage, attachmentReloadKey, projectId, ready]);
+  }, [activeTab, attachmentPage, attachmentReloadKey, projectId, ready, t]);
 
   useEffect(() => {
     if (!ready || activeTab !== "activity") {
@@ -277,7 +285,7 @@ export function ProjectDetailPage({ projectId }: { projectId: number }) {
         }
       } catch (error) {
         if (!cancelled) {
-          setActivityState({ kind: "error", message: resolveError(error, "Unable to load project activity.") });
+          setActivityState({ kind: "error", message: resolveError(error, t("projects.errors.activity")) });
         }
       }
     }
@@ -285,7 +293,7 @@ export function ProjectDetailPage({ projectId }: { projectId: number }) {
     return () => {
       cancelled = true;
     };
-  }, [activeTab, activityPage, activityReloadKey, projectId, ready]);
+  }, [activeTab, activityPage, activityReloadKey, projectId, ready, t]);
 
   useEffect(() => {
     if (!ready || !taskDrawerOpen || !activeTaskId) {
@@ -306,7 +314,7 @@ export function ProjectDetailPage({ projectId }: { projectId: number }) {
         }
       } catch (error) {
         if (!cancelled) {
-          setToast({ kind: "error", message: resolveError(error, "Unable to load task detail.") });
+          setToast({ kind: "error", message: resolveError(error, t("tasks.toasts.detailFailed")) });
         }
       } finally {
         if (!cancelled) {
@@ -318,7 +326,7 @@ export function ProjectDetailPage({ projectId }: { projectId: number }) {
     return () => {
       cancelled = true;
     };
-  }, [activeTaskId, drawerReloadKey, projectId, ready, taskDrawerOpen]);
+  }, [activeTaskId, drawerReloadKey, projectId, ready, t, taskDrawerOpen]);
 
   async function openTaskDrawer(taskId: number) {
     setActiveTaskId(taskId);
@@ -340,7 +348,7 @@ export function ProjectDetailPage({ projectId }: { projectId: number }) {
       setTaskFormDefaultStatus(undefined);
       setTaskFormOpen(true);
     } catch (error) {
-      setToast({ kind: "error", message: resolveError(error, "Unable to load task for editing.") });
+      setToast({ kind: "error", message: resolveError(error, t("tasks.toasts.editLoadFailed")) });
     }
   }
 
@@ -365,7 +373,7 @@ export function ProjectDetailPage({ projectId }: { projectId: number }) {
           data: applyServerTaskOrder(current.data, result.task, result.column_orders),
         };
       });
-      setToast({ kind: "success", message: `Moved task ${result.task.title}.` });
+      setToast({ kind: "success", message: t("tasks.toasts.moveSuccess", { name: result.task.title }) });
       setCoreReloadKey((current) => current + 1);
       setTaskReloadKey((current) => current + 1);
       if (activeTaskId === taskId) {
@@ -373,7 +381,7 @@ export function ProjectDetailPage({ projectId }: { projectId: number }) {
       }
     } catch (error) {
       setBoardState({ kind: "ready", data: previousTasks });
-      setToast({ kind: "error", message: resolveError(error, "Unable to move task.") });
+      setToast({ kind: "error", message: resolveError(error, t("tasks.toasts.moveFailed")) });
     } finally {
       setMovingTaskId(null);
     }
@@ -388,11 +396,11 @@ export function ProjectDetailPage({ projectId }: { projectId: number }) {
       await uploadAttachment(project.id, attachmentFile, attachmentTaskId ? Number(attachmentTaskId) : null);
       setAttachmentFile(null);
       setAttachmentTaskId("");
-      setToast({ kind: "success", message: "Uploaded attachment successfully." });
+      setToast({ kind: "success", message: t("tasks.toasts.uploadAttachmentSuccess") });
       setAttachmentReloadKey((current) => current + 1);
       setCoreReloadKey((current) => current + 1);
     } catch (error) {
-      setToast({ kind: "error", message: resolveError(error, "Unable to upload attachment.") });
+      setToast({ kind: "error", message: resolveError(error, t("tasks.toasts.uploadAttachmentFailed")) });
     } finally {
       setUploadingAttachment(false);
     }
@@ -403,32 +411,32 @@ export function ProjectDetailPage({ projectId }: { projectId: number }) {
 
   return (
     <DepartmentAccessGuard
-      description="Project management is only available to approved users."
+      description={t("projects.accessDeniedDescription")}
       requiredPermissions={["projects.module.view"]}
-      title="Access denied"
+      title={t("projects.accessDeniedTitle")}
     >
       <div className={styles.page}>
         <section className={`surface ${styles.hero}`}>
           <div className={styles.sectionHeader}>
             <div>
-              <div className="eyebrow">Project Workspace</div>
-              <h1 className={styles.heroTitle}>{project?.name || "Loading project..."}</h1>
+              <div className="eyebrow">{t("projects.workspaceEyebrow")}</div>
+              <h1 className={styles.heroTitle}>{project?.name || t("projects.workspaceFallbackTitle")}</h1>
               <p className={styles.heroText}>
                 {project?.description ||
-                  "Use this workspace to coordinate project scope, tasks, milestones, files, and operational history."}
+                  t("projects.workspaceFallbackDescription")}
               </p>
             </div>
             <div className={styles.actionBar}>
               <Link className="buttonGhost" href="/dashboard/projects">
-                Back to Projects
+                {t("projects.actions.backToProjects")}
               </Link>
               {project?.can_edit ? (
                 <>
                   <button className="buttonGhost" onClick={() => setProjectFormOpen(true)} type="button">
-                    Edit Project
+                    {t("projects.actions.editProject")}
                   </button>
                   <button className="button" onClick={() => setArchiveTarget(project)} type="button">
-                    Archive Project
+                    {t("projects.actions.archiveProject")}
                   </button>
                 </>
               ) : null}
@@ -441,32 +449,32 @@ export function ProjectDetailPage({ projectId }: { projectId: number }) {
                 <span className={styles.chip}>{project.code}</span>
                 <StatusBadge kind="project" value={project.status} />
                 <PriorityBadge kind="project" value={project.priority} />
-                <span className={styles.chip}>{project.progress}% complete</span>
+                <span className={styles.chip}>{project.progress}%</span>
               </div>
 
               <div className={styles.statsGrid}>
                 <article className={styles.statCard}>
-                  <span className={styles.statLabel}>Owner</span>
-                  <strong className={styles.statValue}>{getUserLabel(project.owner)}</strong>
+                  <span className={styles.statLabel}>{t("projects.detail.stats.owner")}</span>
+                  <strong className={styles.statValue}>{getUserLabel(project.owner, t("common.states.unassigned"))}</strong>
                 </article>
                 <article className={styles.statCard}>
-                  <span className={styles.statLabel}>Members</span>
+                  <span className={styles.statLabel}>{t("projects.detail.stats.members")}</span>
                   <strong className={styles.statValue}>{project.member_count}</strong>
                 </article>
                 <article className={styles.statCard}>
-                  <span className={styles.statLabel}>Start Date</span>
-                  <strong className={styles.statValue}>{formatDate(project.start_date)}</strong>
+                  <span className={styles.statLabel}>{t("projects.detail.stats.startDate")}</span>
+                  <strong className={styles.statValue}>{formatDate(project.start_date, locale, t("common.states.none"))}</strong>
                 </article>
                 <article className={styles.statCard}>
-                  <span className={styles.statLabel}>Deadline</span>
-                  <strong className={styles.statValue}>{formatDate(project.end_date)}</strong>
+                  <span className={styles.statLabel}>{t("projects.detail.stats.deadline")}</span>
+                  <strong className={styles.statValue}>{formatDate(project.end_date, locale, t("common.states.none"))}</strong>
                 </article>
               </div>
             </>
           ) : dashboardState.kind === "error" ? (
-            <EmptyState description={dashboardState.message} title="Unable to load project" tone="error" />
+            <EmptyState description={dashboardState.message} title={t("projects.errors.detail")} tone="error" />
           ) : (
-            <div className={styles.placeholder}>Loading project detail...</div>
+            <div className={styles.placeholder}>{t("common.states.loading")}</div>
           )}
         </section>
 
@@ -474,12 +482,12 @@ export function ProjectDetailPage({ projectId }: { projectId: number }) {
           <div className={styles.tabsRow}>
             {DETAIL_TABS.map((tab) => (
               <button
-                className={`${styles.tabButton} ${activeTab === tab.key ? styles.tabButtonActive : ""}`}
-                key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
+                className={`${styles.tabButton} ${activeTab === tab ? styles.tabButtonActive : ""}`}
+                key={tab}
+                onClick={() => setActiveTab(tab)}
                 type="button"
               >
-                {tab.label}
+                {t(`projects.detail.tabs.${tab}`)}
               </button>
             ))}
           </div>
@@ -492,10 +500,8 @@ export function ProjectDetailPage({ projectId }: { projectId: number }) {
             <div className={styles.stack}>
               <div className={styles.sectionHeader}>
                 <div>
-                  <h2 className={styles.projectTitle}>Kanban Board</h2>
-                  <p className={styles.secondaryText}>
-                    Drag tasks across columns. Order is persisted and restored on refresh.
-                  </p>
+                  <h2 className={styles.projectTitle}>{t("tasks.kanban.title")}</h2>
+                  <p className={styles.secondaryText}>{t("tasks.kanban.subtitle")}</p>
                 </div>
                 <button
                   className="button"
@@ -504,13 +510,13 @@ export function ProjectDetailPage({ projectId }: { projectId: number }) {
                   }}
                   type="button"
                 >
-                  New Task
+                  {t("tasks.newTask")}
                 </button>
               </div>
               {boardState.kind === "error" ? (
-                <EmptyState description={boardState.message} title="Kanban unavailable" tone="error" />
+                <EmptyState description={boardState.message} title={t("projects.errors.kanban")} tone="error" />
               ) : boardState.kind === "loading" ? (
-                <div className={styles.placeholder}>Loading board...</div>
+                <div className={styles.placeholder}>{t("common.states.loading")}</div>
               ) : (
                 <KanbanBoard
                   movingTaskId={movingTaskId}
@@ -683,66 +689,69 @@ export function ProjectDetailPage({ projectId }: { projectId: number }) {
 
         {archiveTarget ? (
           <ConfirmDialog
-            confirmLabel="Archive Project"
-            description={`Archive ${archiveTarget.name}. This keeps project history while removing it from active views.`}
+            confirmLabel={t("projects.actions.archiveProject")}
+            description={t("projects.toasts.archiveDescription", { name: archiveTarget.name })}
             onClose={() => setArchiveTarget(null)}
             onConfirm={async () => {
               await archiveProject(archiveTarget.id);
               setArchiveTarget(null);
-              setToast({ kind: "success", message: `Archived project ${archiveTarget.name}.` });
+              setToast({ kind: "success", message: t("projects.toasts.archiveSuccess", { name: archiveTarget.name }) });
               setCoreReloadKey((current) => current + 1);
             }}
-            title="Archive Project"
+            title={t("projects.toasts.archiveTitle")}
           />
         ) : null}
 
         {taskDeleteTarget ? (
           <ConfirmDialog
-            confirmLabel="Delete Task"
-            description={`Delete task ${taskDeleteTarget.title}. The task is soft-deleted and removed from active boards.`}
+            confirmLabel={t("common.actions.delete")}
+            description={t("tasks.toasts.deleteDescription", { name: taskDeleteTarget.title })}
             onClose={() => setTaskDeleteTarget(null)}
             onConfirm={async () => {
               await deleteTask(taskDeleteTarget.id);
               setTaskDeleteTarget(null);
               setTaskDrawerOpen(false);
               setActiveTaskId(null);
-              setToast({ kind: "success", message: `Deleted task ${taskDeleteTarget.title}.` });
+              setToast({ kind: "success", message: t("tasks.toasts.deleteSuccess", { name: taskDeleteTarget.title }) });
               setCoreReloadKey((current) => current + 1);
               setTaskReloadKey((current) => current + 1);
             }}
-            title="Delete Task"
+            title={t("tasks.toasts.deleteTitle")}
           />
         ) : null}
 
         {milestoneDeleteTarget ? (
           <ConfirmDialog
-            confirmLabel="Delete Milestone"
-            description={`Delete milestone ${milestoneDeleteTarget.name}. Linked tasks remain, but the milestone reference is removed.`}
+            confirmLabel={t("common.actions.delete")}
+            description={t("milestones.toasts.deleteDescription", { name: milestoneDeleteTarget.name })}
             onClose={() => setMilestoneDeleteTarget(null)}
             onConfirm={async () => {
               await deleteMilestone(milestoneDeleteTarget.id);
               setMilestoneDeleteTarget(null);
-              setToast({ kind: "success", message: `Deleted milestone ${milestoneDeleteTarget.name}.` });
+              setToast({ kind: "success", message: t("milestones.toasts.deleteSuccess", { name: milestoneDeleteTarget.name }) });
               setCoreReloadKey((current) => current + 1);
             }}
-            title="Delete Milestone"
+            title={t("milestones.toasts.deleteTitle")}
           />
         ) : null}
 
         {attachmentDeleteTarget ? (
           <ConfirmDialog
-            confirmLabel="Delete Attachment"
-            description={`Delete attachment ${attachmentDeleteTarget.file_name}. This action removes the file from the project workspace.`}
+            confirmLabel={t("common.actions.delete")}
+            description={t("projects.attachments.deleteDescription", { name: attachmentDeleteTarget.file_name })}
             onClose={() => setAttachmentDeleteTarget(null)}
             onConfirm={async () => {
               await deleteAttachment(attachmentDeleteTarget.id);
               setAttachmentDeleteTarget(null);
-              setToast({ kind: "success", message: `Deleted attachment ${attachmentDeleteTarget.file_name}.` });
+              setToast({
+                kind: "success",
+                message: t("projects.attachments.deleteSuccess", { name: attachmentDeleteTarget.file_name }),
+              });
               setAttachmentReloadKey((current) => current + 1);
               setDrawerReloadKey((current) => current + 1);
               setCoreReloadKey((current) => current + 1);
             }}
-            title="Delete Attachment"
+            title={t("projects.attachments.deleteTitle")}
           />
         ) : null}
 
@@ -765,23 +774,26 @@ function MilestonesTab({
   onEdit: (milestone: MilestoneItem) => void;
   onDelete: (milestone: MilestoneItem) => void;
 }) {
+  const t = useTranslations();
+  const locale = useLocale() as AppLocale;
+
   return (
     <div className={styles.stack}>
       <div className={styles.sectionHeader}>
         <div>
-          <h2 className={styles.projectTitle}>Milestones</h2>
-          <p className={styles.secondaryText}>Maintain delivery checkpoints and communicate timeline risk.</p>
+          <h2 className={styles.projectTitle}>{t("projects.milestones.title")}</h2>
+          <p className={styles.secondaryText}>{t("projects.milestones.subtitle")}</p>
         </div>
         {projectCanEdit ? (
           <button className="button" onClick={onCreate} type="button">
-            New Milestone
+            {t("projects.milestones.newMilestone")}
           </button>
         ) : null}
       </div>
       {milestonesState.kind === "loading" ? (
-        <div className={styles.placeholder}>Loading milestones...</div>
+        <div className={styles.placeholder}>{t("common.states.loading")}</div>
       ) : milestonesState.kind === "error" ? (
-        <EmptyState description={milestonesState.message} title="Milestones unavailable" tone="error" />
+        <EmptyState description={milestonesState.message} title={t("projects.milestones.unavailable")} tone="error" />
       ) : milestonesState.data.length ? (
         <div className={styles.cardGrid}>
           {milestonesState.data.map((milestone) => (
@@ -789,18 +801,22 @@ function MilestonesTab({
               <div className={styles.sectionHeader}>
                 <div>
                   <strong>{milestone.name}</strong>
-                  <div className={styles.secondaryText}>Due {formatDate(milestone.due_date)}</div>
+                  <div className={styles.secondaryText}>
+                    {t("projects.milestones.due", {
+                      date: formatDate(milestone.due_date, locale, t("common.states.none")),
+                    })}
+                  </div>
                 </div>
                 <StatusBadge kind="milestone" value={milestone.status} />
               </div>
-              <p className={styles.secondaryText}>{milestone.description || "No description."}</p>
+              <p className={styles.secondaryText}>{milestone.description || t("common.states.noDescription")}</p>
               {projectCanEdit ? (
                 <div className={styles.actionBar}>
                   <button className={styles.smallButton} onClick={() => onEdit(milestone)} type="button">
-                    Edit
+                    {t("common.actions.edit")}
                   </button>
                   <button className={styles.smallButton} onClick={() => onDelete(milestone)} type="button">
-                    Delete
+                    {t("common.actions.delete")}
                   </button>
                 </div>
               ) : null}
@@ -808,7 +824,10 @@ function MilestonesTab({
           ))}
         </div>
       ) : (
-        <EmptyState description="Create the first milestone to align project checkpoints." title="No Milestones" />
+        <EmptyState
+          description={t("projects.milestones.empty")}
+          title={t("projects.detail.tabs.milestones")}
+        />
       )}
     </div>
   );
@@ -839,20 +858,23 @@ function AttachmentsTab({
   onDelete: (attachment: AttachmentItem) => void;
   onPageChange: (page: number) => void;
 }) {
+  const t = useTranslations();
+  const locale = useLocale() as AppLocale;
+
   return (
     <div className={styles.stack}>
       <div className={styles.sectionHeader}>
         <div>
-          <h2 className={styles.projectTitle}>Attachments</h2>
-          <p className={styles.secondaryText}>Upload files at project level or bind them to a task.</p>
+          <h2 className={styles.projectTitle}>{t("projects.attachments.title")}</h2>
+          <p className={styles.secondaryText}>{t("projects.attachments.subtitle")}</p>
         </div>
       </div>
 
       <div className={styles.formGrid}>
         <label className={styles.field}>
-          <span className={styles.fieldLabel}>Bind to Task</span>
+          <span className={styles.fieldLabel}>{t("projects.attachments.bindTask")}</span>
           <select className={styles.select} onChange={(event) => onTaskChange(event.target.value)} value={attachmentTaskId}>
-            <option value="">Project level attachment</option>
+            <option value="">{t("projects.attachments.projectLevel")}</option>
             {boardTasks.map((task) => (
               <option key={task.id} value={task.id}>
                 {task.title}
@@ -861,33 +883,33 @@ function AttachmentsTab({
           </select>
         </label>
         <label className={`${styles.field} ${styles.fullSpan}`}>
-          <span className={styles.fieldLabel}>File</span>
+          <span className={styles.fieldLabel}>{t("projects.attachments.file")}</span>
           <input className={styles.input} onChange={(event) => onFileChange(event.target.files?.[0] ?? null)} type="file" />
         </label>
       </div>
 
       <div className={styles.actionBar}>
         <button className="button" disabled={!attachmentFile || uploading} onClick={onUpload} type="button">
-          {uploading ? "Uploading..." : "Upload Attachment"}
+          {uploading ? t("projects.attachments.uploading") : t("projects.attachments.upload")}
         </button>
       </div>
 
       {attachmentsState.kind === "loading" ? (
-        <div className={styles.placeholder}>Loading attachments...</div>
+        <div className={styles.placeholder}>{t("common.states.loading")}</div>
       ) : attachmentsState.kind === "error" ? (
-        <EmptyState description={attachmentsState.message} title="Attachments unavailable" tone="error" />
+        <EmptyState description={attachmentsState.message} title={t("projects.attachments.unavailable")} tone="error" />
       ) : attachmentsState.data.items.length ? (
         <>
           <div className={styles.tableWrap}>
             <table className={styles.table}>
               <thead>
                 <tr>
-                  <th>File</th>
-                  <th>Task</th>
-                  <th>Size</th>
-                  <th>Uploader</th>
-                  <th>Uploaded</th>
-                  <th>Actions</th>
+                  <th>{t("projects.attachments.file")}</th>
+                  <th>{t("projects.attachments.task")}</th>
+                  <th>{t("projects.attachments.size")}</th>
+                  <th>{t("projects.attachments.uploader")}</th>
+                  <th>{t("projects.attachments.uploaded")}</th>
+                  <th>{t("tasks.list.actions")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -898,14 +920,14 @@ function AttachmentsTab({
                         {attachment.file_name}
                       </a>
                     </td>
-                    <td>{attachment.task_title || "--"}</td>
+                    <td>{attachment.task_title || t("common.states.none")}</td>
                     <td>{formatFileSize(attachment.file_size)}</td>
-                    <td>{getUserLabel(attachment.uploaded_by)}</td>
-                    <td>{formatDateTime(attachment.created_at)}</td>
+                    <td>{getUserLabel(attachment.uploaded_by, t("activity.operatorFallback"))}</td>
+                    <td>{formatDateTime(attachment.created_at, locale, t("common.states.none"))}</td>
                     <td>
                       {canDeleteAttachment(attachment) ? (
                         <button className={styles.smallButton} onClick={() => onDelete(attachment)} type="button">
-                          Delete
+                          {t("common.actions.delete")}
                         </button>
                       ) : null}
                     </td>
@@ -917,7 +939,7 @@ function AttachmentsTab({
           <PaginationActions pagination={attachmentsState.data.pagination} onPageChange={onPageChange} />
         </>
       ) : (
-        <EmptyState description="Upload the first document to share project context." title="No Attachments" />
+        <EmptyState description={t("projects.attachments.empty")} title={t("projects.attachments.title")} />
       )}
     </div>
   );
@@ -930,14 +952,16 @@ function ActivityTab({
   state: ResourceState<PaginatedPayload<ProjectActivityItem>>;
   onPageChange: (page: number) => void;
 }) {
+  const t = useTranslations();
+
   if (state.kind === "loading") {
-    return <div className={styles.placeholder}>Loading activity...</div>;
+    return <div className={styles.placeholder}>{t("activity.loading")}</div>;
   }
   if (state.kind === "error") {
-    return <EmptyState description={state.message} title="Activity unavailable" tone="error" />;
+    return <EmptyState description={state.message} title={t("activity.unavailable")} tone="error" />;
   }
   if (!state.data.items.length) {
-    return <EmptyState description="No project activity recorded yet." title="No Activity" />;
+    return <EmptyState description={t("activity.emptyDescription")} title={t("activity.emptyTitle")} />;
   }
   return (
     <div className={styles.stack}>
@@ -994,44 +1018,49 @@ function TasksTab({
   onOpenTask: (taskId: number) => void;
   onEditTask: (taskId: number) => void;
 }) {
+  const t = useTranslations();
+  const locale = useLocale() as AppLocale;
+
   return (
     <div className={styles.stack}>
       <div className={styles.toolbar}>
         <div className={styles.toolbarStart}>
           <label className={styles.fieldWide}>
-            <span className={styles.fieldLabel}>Search</span>
+            <span className={styles.fieldLabel}>{t("tasks.list.search")}</span>
             <input
               className={styles.input}
               onChange={(event) => setSearchInput(event.target.value)}
               onKeyDown={(event) => event.key === "Enter" && onApplyFilters()}
-              placeholder="Search tasks"
+              placeholder={t("tasks.list.searchPlaceholder")}
               value={searchInput}
             />
           </label>
           <label className={styles.field}>
-            <span className={styles.fieldLabel}>Status</span>
+            <span className={styles.fieldLabel}>{t("tasks.list.status")}</span>
             <select className={styles.select} onChange={(event) => setStatus(event.target.value)} value={taskStatus}>
-              <option value="">All statuses</option>
-              <option value="todo">Todo</option>
-              <option value="in_progress">In Progress</option>
-              <option value="blocked">Blocked</option>
-              <option value="done">Done</option>
+              <option value="">{t("common.states.allStatuses")}</option>
+              {TASK_STATUS_VALUES.map((value) => (
+                <option key={value} value={value}>
+                  {getTaskStatusLabel(t, value)}
+                </option>
+              ))}
             </select>
           </label>
           <label className={styles.field}>
-            <span className={styles.fieldLabel}>Priority</span>
+            <span className={styles.fieldLabel}>{t("tasks.list.priority")}</span>
             <select className={styles.select} onChange={(event) => setPriority(event.target.value)} value={taskPriority}>
-              <option value="">All priorities</option>
-              <option value="low">Low</option>
-              <option value="medium">Medium</option>
-              <option value="high">High</option>
-              <option value="urgent">Urgent</option>
+              <option value="">{t("common.states.allPriorities")}</option>
+              {TASK_PRIORITY_VALUES.map((value) => (
+                <option key={value} value={value}>
+                  {getTaskPriorityLabel(t, value)}
+                </option>
+              ))}
             </select>
           </label>
           <label className={styles.field}>
-            <span className={styles.fieldLabel}>Assignee</span>
+            <span className={styles.fieldLabel}>{t("tasks.list.assignee")}</span>
             <select className={styles.select} onChange={(event) => setAssignee(event.target.value)} value={taskAssignee}>
-              <option value="">All assignees</option>
+              <option value="">{t("common.states.allAssignees")}</option>
               {teamMembers.map((member) => (
                 <option key={member.id} value={member.id}>
                   {getUserLabel(member)}
@@ -1040,9 +1069,9 @@ function TasksTab({
             </select>
           </label>
           <label className={styles.field}>
-            <span className={styles.fieldLabel}>Milestone</span>
+            <span className={styles.fieldLabel}>{t("tasks.list.milestone")}</span>
             <select className={styles.select} onChange={(event) => setMilestone(event.target.value)} value={taskMilestone}>
-              <option value="">All milestones</option>
+              <option value="">{t("common.states.allMilestones")}</option>
               {milestones.map((milestone) => (
                 <option key={milestone.id} value={milestone.id}>
                   {milestone.name}
@@ -1052,43 +1081,43 @@ function TasksTab({
           </label>
           <label className={styles.switchRow}>
             <input checked={taskMineOnly} onChange={(event) => setMineOnly(event.target.checked)} type="checkbox" />
-            Only my tasks
+            {t("tasks.list.mineOnly")}
           </label>
         </div>
         <div className={styles.toolbarEnd}>
           <button className="buttonGhost" onClick={onApplyFilters} type="button">
-            Apply
+            {t("common.actions.apply")}
           </button>
           <button className="buttonGhost" onClick={onRefresh} type="button">
-            Refresh
+            {t("common.actions.refresh")}
           </button>
           <button className="button" onClick={onCreateTask} type="button">
-            New Task
+            {t("tasks.newTask")}
           </button>
         </div>
       </div>
 
       {paginationState.kind === "loading" ? (
-        <div className={styles.placeholder}>Loading tasks...</div>
+        <div className={styles.placeholder}>{t("common.states.loading")}</div>
       ) : paginationState.kind === "error" ? (
-        <EmptyState description={paginationState.message} title="Tasks unavailable" tone="error" />
+        <EmptyState description={paginationState.message} title={t("projects.errors.tasks")} tone="error" />
       ) : paginationState.data.items.length ? (
         <>
           <div className={styles.tableWrap}>
             <table className={styles.table}>
               <thead>
                 <tr>
-                  <th>Title</th>
-                  <th>Status</th>
-                  <th>Priority</th>
-                  <th>Assignee</th>
-                  <th>Milestone</th>
-                  <th>Progress</th>
-                  <th>Estimated</th>
-                  <th>Actual</th>
-                  <th>Due</th>
-                  <th>Updated</th>
-                  <th>Actions</th>
+                  <th>{t("tasks.list.title")}</th>
+                  <th>{t("tasks.list.status")}</th>
+                  <th>{t("tasks.list.priority")}</th>
+                  <th>{t("tasks.list.assignee")}</th>
+                  <th>{t("tasks.list.milestone")}</th>
+                  <th>{t("tasks.list.progress")}</th>
+                  <th>{t("tasks.list.estimated")}</th>
+                  <th>{t("tasks.list.actual")}</th>
+                  <th>{t("tasks.list.due")}</th>
+                  <th>{t("tasks.list.updated")}</th>
+                  <th>{t("tasks.list.actions")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -1099,31 +1128,31 @@ function TasksTab({
                         <button className={styles.linkButtonInline} onClick={() => onOpenTask(task.id)} type="button">
                           {task.title}
                         </button>
-                        <span className={styles.secondaryText}>{task.description || "--"}</span>
+                        <span className={styles.secondaryText}>{task.description || t("common.states.none")}</span>
                       </div>
                     </td>
                     <td><StatusBadge kind="task" value={task.status} /></td>
                     <td><PriorityBadge kind="task" value={task.priority} /></td>
-                    <td>{getUserLabel(task.assignee)}</td>
-                    <td>{task.milestone_name || "--"}</td>
+                    <td>{getUserLabel(task.assignee, t("common.states.unassigned"))}</td>
+                    <td>{task.milestone_name || t("common.states.none")}</td>
                     <td>{task.progress}%</td>
-                    <td>{task.estimated_hours || "--"}</td>
-                    <td>{task.actual_hours || "--"}</td>
-                    <td>{formatDate(task.due_date)}</td>
-                    <td>{formatDateTime(task.updated_at)}</td>
+                    <td>{task.estimated_hours || t("common.states.none")}</td>
+                    <td>{task.actual_hours || t("common.states.none")}</td>
+                    <td>{formatDate(task.due_date, locale, t("common.states.none"))}</td>
+                    <td>{formatDateTime(task.updated_at, locale, t("common.states.none"))}</td>
                     <td>
                       <div className={styles.actionGroup}>
                         <button className={styles.smallButton} onClick={() => onOpenTask(task.id)} type="button">
-                          Open
+                          {t("common.actions.open")}
                         </button>
                         {task.can_edit ? (
                           <button className={styles.smallButton} onClick={() => onEditTask(task.id)} type="button">
-                            Edit
+                            {t("common.actions.edit")}
                           </button>
                         ) : null}
                         {task.can_delete ? (
                           <button className={styles.smallButton} onClick={() => onDeleteTask(task)} type="button">
-                            Delete
+                            {t("common.actions.delete")}
                           </button>
                         ) : null}
                       </div>
@@ -1136,7 +1165,10 @@ function TasksTab({
           <PaginationActions pagination={paginationState.data.pagination} onPageChange={setPage} />
         </>
       ) : (
-        <EmptyState description="No tasks match the current filters." title="No Tasks Found" />
+        <EmptyState
+          description={t("tasks.list.emptyDescription")}
+          title={t("tasks.list.emptyTitle")}
+        />
       )}
     </div>
   );
@@ -1149,10 +1181,16 @@ function PaginationActions({
   pagination: PaginatedPayload<unknown>["pagination"];
   onPageChange: (page: number) => void;
 }) {
+  const t = useTranslations();
+
   return (
     <div className={styles.paginationRow}>
       <span className={styles.secondaryText}>
-        Page {pagination.page} / {pagination.pages} | {pagination.count} items
+        {t("common.pagination.summary", {
+          page: pagination.page,
+          pages: pagination.pages,
+          count: pagination.count,
+        })}
       </span>
       <div className={styles.actionGroup}>
         <button
@@ -1161,7 +1199,7 @@ function PaginationActions({
           onClick={() => onPageChange(Math.max(1, pagination.page - 1))}
           type="button"
         >
-          Previous
+          {t("common.pagination.previous")}
         </button>
         <button
           className={styles.smallButton}
@@ -1169,7 +1207,7 @@ function PaginationActions({
           onClick={() => onPageChange(pagination.page + 1)}
           type="button"
         >
-          Next
+          {t("common.pagination.next")}
         </button>
       </div>
     </div>
@@ -1203,11 +1241,14 @@ function OverviewTab({
   dashboardState: ResourceState<ProjectDashboardPayload>;
   project: ProjectDetail | null;
 }) {
+  const t = useTranslations();
+  const locale = useLocale() as AppLocale;
+
   if (dashboardState.kind === "loading") {
-    return <div className={styles.placeholder}>Loading overview...</div>;
+    return <div className={styles.placeholder}>{t("common.states.loading")}</div>;
   }
   if (dashboardState.kind === "error") {
-    return <EmptyState description={dashboardState.message} title="Overview unavailable" tone="error" />;
+    return <EmptyState description={dashboardState.message} title={t("projects.errors.overview")} tone="error" />;
   }
 
   const dashboard = dashboardState.data;
@@ -1217,46 +1258,44 @@ function OverviewTab({
       <section className={`surface ${styles.sectionPanel}`}>
         <div className={styles.sectionHeader}>
           <div>
-            <h2 className={styles.projectTitle}>Project Summary</h2>
-            <p className={styles.secondaryText}>
-              Owner, members, progress, and immediate delivery signals.
-            </p>
+            <h2 className={styles.projectTitle}>{t("projects.detail.summaryTitle")}</h2>
+            <p className={styles.secondaryText}>{t("projects.detail.summaryDescription")}</p>
           </div>
         </div>
         <div className={styles.detailGrid}>
           <div className={styles.detailList}>
             <div className={styles.detailRow}>
-              <span className={styles.fieldLabel}>Owner</span>
-              <span>{getUserLabel(project?.owner)}</span>
+              <span className={styles.fieldLabel}>{t("projects.detail.stats.owner")}</span>
+              <span>{getUserLabel(project?.owner, t("common.states.unassigned"))}</span>
             </div>
             <div className={styles.detailRow}>
-              <span className={styles.fieldLabel}>Members</span>
+              <span className={styles.fieldLabel}>{t("projects.detail.stats.members")}</span>
               <MemberAvatarGroup members={project?.members ?? []} maxVisible={6} />
             </div>
             <div className={styles.detailRow}>
-              <span className={styles.fieldLabel}>Progress</span>
+              <span className={styles.fieldLabel}>{t("projects.detail.progressLabel")}</span>
               <span>{project?.progress ?? 0}%</span>
             </div>
           </div>
           <div className={styles.statsGrid}>
             <article className={styles.statCard}>
-              <span className={styles.statLabel}>Total</span>
+              <span className={styles.statLabel}>{t("projects.detail.taskStats.total")}</span>
               <strong className={styles.statValue}>{dashboard.task_counts.total}</strong>
             </article>
             <article className={styles.statCard}>
-              <span className={styles.statLabel}>Todo</span>
+              <span className={styles.statLabel}>{t("projects.detail.taskStats.todo")}</span>
               <strong className={styles.statValue}>{dashboard.task_counts.todo}</strong>
             </article>
             <article className={styles.statCard}>
-              <span className={styles.statLabel}>In Progress</span>
+              <span className={styles.statLabel}>{t("projects.detail.taskStats.in_progress")}</span>
               <strong className={styles.statValue}>{dashboard.task_counts.in_progress}</strong>
             </article>
             <article className={styles.statCard}>
-              <span className={styles.statLabel}>Blocked</span>
+              <span className={styles.statLabel}>{t("projects.detail.taskStats.blocked")}</span>
               <strong className={styles.statValue}>{dashboard.task_counts.blocked}</strong>
             </article>
             <article className={styles.statCard}>
-              <span className={styles.statLabel}>Done</span>
+              <span className={styles.statLabel}>{t("projects.detail.taskStats.done")}</span>
               <strong className={styles.statValue}>{dashboard.task_counts.done}</strong>
             </article>
           </div>
@@ -1265,7 +1304,7 @@ function OverviewTab({
 
       <section className={`surface ${styles.sectionPanel}`}>
         <div className={styles.sectionHeader}>
-          <h2 className={styles.projectTitle}>Upcoming Tasks</h2>
+          <h2 className={styles.projectTitle}>{t("projects.detail.upcomingTasks")}</h2>
         </div>
         {dashboard.upcoming_tasks.length ? (
           <div className={styles.taskList}>
@@ -1274,7 +1313,10 @@ function OverviewTab({
                 <span className={styles.primaryCell}>
                   <strong>{task.title}</strong>
                   <span className={styles.secondaryText}>
-                    Due {formatDate(task.due_date)} | {getUserLabel(task.assignee)}
+                    {t("tasks.kanban.due", {
+                      date: formatDate(task.due_date, locale, t("common.states.none")),
+                    })}{" "}
+                    | {getUserLabel(task.assignee, t("common.states.unassigned"))}
                   </span>
                 </span>
                 <StatusBadge kind="task" value={task.status} />
@@ -1282,13 +1324,13 @@ function OverviewTab({
             ))}
           </div>
         ) : (
-          <div className={styles.placeholder}>No upcoming tasks within the current project scope.</div>
+          <div className={styles.placeholder}>{t("projects.detail.upcomingFallback")}</div>
         )}
       </section>
 
       <section className={`surface ${styles.sectionPanel}`}>
         <div className={styles.sectionHeader}>
-          <h2 className={styles.projectTitle}>Recent Activity</h2>
+          <h2 className={styles.projectTitle}>{t("projects.detail.recentActivity")}</h2>
         </div>
         <ActivityTimeline activities={dashboard.recent_activities} />
       </section>

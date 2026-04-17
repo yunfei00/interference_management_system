@@ -48,6 +48,11 @@
   gap: 1.2rem;
 }
 
+.brandTop {
+  display: flex;
+  justify-content: flex-end;
+}
+
 .brandMark {
   width: 3.25rem;
   height: 3.25rem;

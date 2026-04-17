@@ -248,6 +248,19 @@ export type AdminDepartmentOption = {
   full_name: string;
 };
 
+export type AdminDepartmentRow = {
+  id: number;
+  name: string;
+  code: string;
+  department_type: "division" | "department";
+  parent: number | null;
+  parent_name: string | null;
+  page_path: string;
+  sort: number;
+  is_active: boolean;
+  full_name: string;
+};
+
 export type AdminUserRow = {
   id: number;
   username: string;

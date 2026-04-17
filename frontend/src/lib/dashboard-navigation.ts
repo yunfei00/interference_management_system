@@ -23,6 +23,11 @@ export const PORTAL_NAV_TREE: NavTreeNode[] = [
         href: "/dashboard/admin/users",
         requiredPermissions: ["admin.users.view"],
       },
+      {
+        key: "admin_departments",
+        href: "/dashboard/admin/departments",
+        requiredPermissions: ["admin.users.view"],
+      },
     ],
   },
   {

@@ -1,15 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { startTransition, useTransition } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
+import { startTransition, useEffect, useTransition } from "react";
 
 import { apiFetch } from "@/lib/api-client";
-import { APP_NAME } from "@/lib/public-config";
 
 import { DashboardSidebar } from "./dashboard-sidebar";
 import { useDashboardSession } from "./dashboard-session-provider";
+import { LanguageSwitcher } from "./language-switcher";
 import styles from "./dashboard-shell.module.css";
+
+const FORCE_PASSWORD_PATH = "/dashboard/change-password";
 
 export function DashboardShell({
   children,
@@ -17,6 +20,9 @@ export function DashboardShell({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
+  const t = useTranslations();
+  const appName = t("common.appName");
   const { state, refreshSession } = useDashboardSession();
   const [isRefreshing, startRefreshTransition] = useTransition();
   const [isLoggingOut, startLogoutTransition] = useTransition();
@@ -31,11 +37,25 @@ export function DashboardShell({
     });
   }
 
+  useEffect(() => {
+    if (state.kind !== "ready") {
+      return;
+    }
+    if (
+      state.data.user.must_change_password &&
+      pathname !== FORCE_PASSWORD_PATH
+    ) {
+      startTransition(() => {
+        router.replace(FORCE_PASSWORD_PATH);
+      });
+    }
+  }, [pathname, router, state]);
+
   if (state.kind === "loading") {
     return (
       <div className={styles.appShell}>
         <header className={styles.appHeader}>
-          <span className={styles.appBrand}>{APP_NAME}</span>
+          <span className={styles.appBrand}>{appName}</span>
         </header>
         <div className={styles.appBody}>
           <aside className={styles.appSidebar}>
@@ -60,8 +80,8 @@ export function DashboardShell({
     return (
       <main className={styles.page}>
         <section className={`surface ${styles.errorCard}`}>
-          <div className="eyebrow">会话异常</div>
-          <h1 className={styles.panelTitle}>无法进入工作台</h1>
+          <div className="eyebrow">{t("dashboard.sessionErrorEyebrow")}</div>
+          <h1 className={styles.panelTitle}>{t("dashboard.sessionErrorTitle")}</h1>
           <p className={styles.errorText}>{state.message}</p>
           <div className={styles.actionRow}>
             <button
@@ -73,10 +93,12 @@ export function DashboardShell({
               }
               type="button"
             >
-              {isRefreshing ? "重试中..." : "重新获取会话"}
+              {isRefreshing
+                ? t("dashboard.retrying")
+                : t("dashboard.reloadSession")}
             </button>
             <Link className="buttonGhost" href="/login">
-              返回登录
+              {t("common.actions.backToLogin")}
             </Link>
           </div>
         </section>
@@ -85,19 +107,48 @@ export function DashboardShell({
   }
 
   const session = state.data;
+  const mustChangePassword = session.user.must_change_password;
+  const showRestrictedShell = mustChangePassword && pathname !== FORCE_PASSWORD_PATH;
+
+  if (showRestrictedShell) {
+    return (
+      <main className={styles.page}>
+        <section className={`surface ${styles.errorCard}`}>
+          <div className="eyebrow">{t("dashboard.securityEyebrow")}</div>
+          <h1 className={styles.panelTitle}>{t("dashboard.passwordRequiredTitle")}</h1>
+          <p className={styles.errorText}>{t("dashboard.passwordRequiredDescription")}</p>
+        </section>
+      </main>
+    );
+  }
 
   return (
     <div className={styles.appShell}>
       <header className={styles.appHeader}>
         <Link className={styles.appBrand} href="/dashboard">
-          {APP_NAME}
+          {appName}
         </Link>
         <div className={styles.appHeaderMeta}>
-          <span>{session.user.username}</span>
-          <span className={styles.metaSep}>·</span>
-          <span>{session.user.department_full_name || "未分配部门"}</span>
+          <span>{session.user.display_name || session.user.username}</span>
+          <span className={styles.metaSep}>|</span>
+          <span>
+            {session.user.department_full_name || t("dashboard.unassignedDepartment")}
+          </span>
         </div>
         <div className={styles.appHeaderActions}>
+          <LanguageSwitcher />
+          {mustChangePassword ? (
+            <span className={styles.forceBadge}>{t("dashboard.passwordRequiredBadge")}</span>
+          ) : (
+            <>
+              <Link className="buttonGhost" href="/dashboard/profile">
+                {t("dashboard.profile")}
+              </Link>
+              <Link className="buttonGhost" href="/dashboard/change-password">
+                {t("dashboard.changePassword")}
+              </Link>
+            </>
+          )}
           <button
             className="buttonGhost"
             onClick={() =>
@@ -107,7 +158,7 @@ export function DashboardShell({
             }
             type="button"
           >
-            {isRefreshing ? "刷新中..." : "刷新会话"}
+            {isRefreshing ? t("dashboard.refreshing") : t("dashboard.refresh")}
           </button>
           <button
             className="button"
@@ -118,15 +169,17 @@ export function DashboardShell({
             }
             type="button"
           >
-            {isLoggingOut ? "退出中..." : "退出登录"}
+            {isLoggingOut ? t("dashboard.signingOut") : t("dashboard.signOut")}
           </button>
         </div>
       </header>
 
       <div className={styles.appBody}>
-        <aside className={styles.appSidebar}>
-          <DashboardSidebar />
-        </aside>
+        {mustChangePassword ? null : (
+          <aside className={styles.appSidebar}>
+            <DashboardSidebar />
+          </aside>
+        )}
         <main className={styles.appMain}>{children}</main>
       </div>
     </div>

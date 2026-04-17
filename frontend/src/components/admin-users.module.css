@@ -1,150 +1,230 @@
-/* 用户管理（管理员） */
+.page {
+  display: grid;
+  gap: 1.25rem;
+  max-width: 1480px;
+  margin: 0 auto;
+}
+
+.headerRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.tabRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.tab,
+.tabActive {
+  min-height: 2.75rem;
+  padding: 0.65rem 1rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.74);
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.tabActive {
+  background: rgba(220, 239, 231, 0.8);
+  border-color: rgba(36, 122, 116, 0.22);
+  color: var(--ink-strong);
+}
 
 .toolbar {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
   gap: 0.75rem 1rem;
-  margin-bottom: 1rem;
 }
 
 .toolbarField {
   display: grid;
   gap: 0.28rem;
-  min-width: 8rem;
+  min-width: 10rem;
 }
 
 .toolbarLabel {
   font-size: 0.72rem;
-  font-weight: 650;
+  font-weight: 700;
   color: var(--muted);
   letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .inputSm,
 .selectSm {
-  font-size: 0.86rem;
-  padding: 0.38rem 0.55rem;
-  border-radius: 0.45rem;
+  min-height: 2.8rem;
+  border-radius: 0.8rem;
   border: 1px solid rgba(22, 50, 63, 0.14);
-  background: #fff;
+  background: rgba(255, 255, 255, 0.92);
+  padding: 0.65rem 0.85rem;
 }
 
 .tableWrap {
   overflow-x: auto;
-  border-radius: 0.6rem;
+  border-radius: 0.85rem;
   border: 1px solid rgba(22, 50, 63, 0.08);
 }
 
 .table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.86rem;
+  font-size: 0.9rem;
 }
 
 .table th,
 .table td {
-  padding: 0.65rem 0.75rem;
+  padding: 0.8rem 0.9rem;
   text-align: left;
   border-bottom: 1px solid rgba(22, 50, 63, 0.06);
+  vertical-align: top;
 }
 
 .table th {
-  font-size: 0.7rem;
+  background: rgba(22, 50, 63, 0.03);
+  color: var(--muted);
+  font-size: 0.72rem;
   font-weight: 750;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: var(--muted);
-  background: rgba(22, 50, 63, 0.03);
 }
 
 .table tbody tr:hover {
   background: rgba(36, 122, 116, 0.04);
 }
 
+.primaryCell {
+  display: grid;
+  gap: 0.25rem;
+}
+
 .muted {
   color: var(--muted);
 }
 
-.rolePill {
-  display: inline-block;
-  padding: 0.12rem 0.45rem;
-  border-radius: 0.35rem;
-  font-size: 0.72rem;
-  font-weight: 650;
+.rolePill,
+.statusPill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.8rem;
+  padding: 0.1rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 700;
 }
 
-.roleUser {
+.role_user {
   background: rgba(22, 50, 63, 0.06);
   color: var(--muted);
 }
 
-.roleAdmin {
+.role_admin {
   background: rgba(36, 122, 116, 0.15);
   color: #0a5340;
 }
 
-.roleSuper {
-  background: rgba(180, 120, 20, 0.15);
+.role_super_admin {
+  background: rgba(180, 120, 20, 0.16);
   color: #6b4a00;
 }
 
-.statusOk {
-  color: #0a5340;
-  font-weight: 650;
+.status_pending {
+  background: rgba(232, 106, 51, 0.12);
+  color: var(--accent-strong);
 }
 
-.statusOff {
-  color: #8a3a3a;
-  font-weight: 650;
+.status_approved {
+  background: rgba(36, 122, 116, 0.12);
+  color: #0a5340;
+}
+
+.status_rejected {
+  background: rgba(180, 60, 60, 0.12);
+  color: #7a2626;
+}
+
+.status_disabled {
+  background: rgba(22, 50, 63, 0.1);
+  color: var(--muted);
 }
 
 .actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.35rem;
+  gap: 0.4rem;
 }
 
-.linkBtn {
+.linkBtn,
+.linkBtnDanger {
   font-size: 0.78rem;
-  font-weight: 600;
-  padding: 0.22rem 0.45rem;
+  font-weight: 700;
+  padding: 0.28rem 0.5rem;
   border: none;
-  border-radius: 0.35rem;
+  border-radius: 0.45rem;
   background: rgba(22, 50, 63, 0.06);
   color: var(--ink);
-  cursor: pointer;
 }
 
-.linkBtn:hover {
-  background: rgba(36, 122, 116, 0.12);
+.linkBtnDanger {
+  background: rgba(180, 60, 60, 0.14);
+  color: #7a2626;
 }
 
 .linkBtnMuted {
-  opacity: 0.55;
+  opacity: 0.45;
   cursor: not-allowed;
 }
 
-.modalBackdrop {
+.paginationRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  color: var(--muted);
+}
+
+.modalBackdrop,
+.drawerBackdrop {
   position: fixed;
   inset: 0;
   z-index: 90;
+  background: rgba(22, 50, 63, 0.4);
+}
+
+.modalBackdrop {
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 1.25rem;
-  background: rgba(22, 50, 63, 0.4);
 }
 
 .modalPanel {
-  width: 100%;
-  max-width: 26rem;
-  max-height: min(90vh, 36rem);
+  width: min(100%, 42rem);
+  max-height: min(90vh, 46rem);
   overflow: auto;
-  padding: 1.1rem 1.2rem 1.2rem;
-  border-radius: 0.7rem;
+  padding: 1.15rem 1.2rem 1.2rem;
+  border-radius: 0.9rem;
   border: 1px solid rgba(22, 50, 63, 0.1);
   box-shadow: 0 20px 48px rgba(22, 50, 63, 0.2);
+}
+
+.drawer {
+  position: absolute;
+  right: 0;
+  top: 0;
+  height: 100vh;
+  width: min(100%, 32rem);
+  padding: 1.2rem;
+  overflow: auto;
+  border-radius: 1.4rem 0 0 1.4rem;
 }
 
 .modalHead {
@@ -152,65 +232,128 @@
   justify-content: space-between;
   align-items: flex-start;
   gap: 0.75rem;
-  margin-bottom: 0.85rem;
-  padding-bottom: 0.65rem;
+  margin-bottom: 0.95rem;
+  padding-bottom: 0.7rem;
   border-bottom: 1px solid rgba(22, 50, 63, 0.08);
 }
 
 .modalTitle {
   margin: 0;
-  font-size: 1.05rem;
+  font-size: 1.08rem;
   font-weight: 700;
 }
 
 .modalClose {
-  flex-shrink: 0;
-  padding: 0.25rem 0.55rem;
-  font-size: 0.82rem;
-  font-weight: 600;
+  padding: 0.28rem 0.6rem;
   border: none;
-  border-radius: 0.4rem;
+  border-radius: 0.45rem;
   background: rgba(22, 50, 63, 0.06);
-  cursor: pointer;
+  font-weight: 700;
 }
 
 .formGrid {
   display: grid;
-  gap: 0.75rem;
+  gap: 0.8rem;
+}
+
+.checkboxRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.helperText {
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+.feedbackOk,
+.feedbackErr {
+  border-radius: 0.8rem;
+  padding: 0.8rem 0.9rem;
+  margin-bottom: 0.8rem;
+  line-height: 1.55;
 }
 
 .feedbackOk {
-  padding: 0.45rem 0.55rem;
-  border-radius: 0.45rem;
-  font-size: 0.82rem;
   background: rgba(36, 122, 116, 0.1);
   color: #0a5340;
-  margin-bottom: 0.65rem;
 }
 
 .feedbackErr {
-  padding: 0.45rem 0.55rem;
-  border-radius: 0.45rem;
-  font-size: 0.82rem;
   background: rgba(180, 60, 60, 0.1);
   color: #7a2626;
-  margin-bottom: 0.65rem;
 }
 
 .footerRow {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-top: 1rem;
   justify-content: flex-end;
+  gap: 0.6rem;
+  margin-top: 1rem;
 }
 
-.paginationRow {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.65rem;
-  margin-top: 1rem;
-  font-size: 0.84rem;
+.detailGrid {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.detailItem {
+  display: grid;
+  gap: 0.22rem;
+  padding-bottom: 0.8rem;
+  border-bottom: 1px dashed rgba(22, 50, 63, 0.14);
+}
+
+.detailLabel {
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
   color: var(--muted);
+}
+
+.detailValue {
+  line-height: 1.6;
+}
+
+.toastSuccess,
+.toastError {
+  position: fixed;
+  right: 1.25rem;
+  top: 1.25rem;
+  z-index: 120;
+  min-width: 18rem;
+  max-width: min(32rem, calc(100vw - 2rem));
+  padding: 0.9rem 1rem;
+  border-radius: 0.85rem;
+  box-shadow: var(--shadow-md);
+}
+
+.toastSuccess {
+  background: rgba(220, 239, 231, 0.98);
+  border: 1px solid rgba(36, 122, 116, 0.22);
+  color: #0a5340;
+}
+
+.toastError {
+  background: rgba(255, 244, 240, 0.98);
+  border: 1px solid rgba(198, 75, 25, 0.18);
+  color: var(--accent-strong);
+}
+
+@media (max-width: 900px) {
+  .toolbar {
+    align-items: stretch;
+  }
+
+  .toolbarField {
+    min-width: min(100%, 16rem);
+  }
+
+  .drawer {
+    width: 100%;
+    border-radius: 0;
+  }
 }

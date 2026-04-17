@@ -49,6 +49,19 @@
   margin-left: auto;
 }
 
+.forceBadge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.4rem;
+  padding: 0.4rem 0.8rem;
+  border-radius: 999px;
+  border: 1px solid rgba(232, 106, 51, 0.2);
+  background: rgba(232, 106, 51, 0.12);
+  color: var(--accent-strong);
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
 .appBody {
   display: flex;
   flex: 1;

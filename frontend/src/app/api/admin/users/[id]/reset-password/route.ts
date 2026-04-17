@@ -6,7 +6,7 @@ export async function POST(
 ) {
   const { id } = await context.params;
   const body = await request.json();
-  return proxyProtectedJson(`/api/v1/admin/users/${id}/reset_password/`, {
+  return proxyProtectedJson(`/api/v1/admin/users/${id}/reset-password/`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),

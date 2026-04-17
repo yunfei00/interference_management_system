@@ -1,4 +1,3 @@
-# accounts/forms.py
 from django import forms
 from django.contrib.auth.forms import AuthenticationForm
 
@@ -6,16 +5,18 @@ from .models import Department, User
 
 
 class RegisterForm(forms.ModelForm):
-    password = forms.CharField(widget=forms.PasswordInput, label="密码")
+    real_name = forms.CharField(label="Real name")
+    title = forms.CharField(required=False, label="Title")
+    password = forms.CharField(widget=forms.PasswordInput, label="Password")
     confirm_password = forms.CharField(
         widget=forms.PasswordInput,
-        label="确认密码",
+        label="Confirm password",
     )
     department = forms.ModelChoiceField(
         queryset=Department.objects.none(),
         required=False,
-        label="所属部门",
-        empty_label="请选择部门",
+        label="Department",
+        empty_label="Select a department",
     )
 
     class Meta:
@@ -23,8 +24,10 @@ class RegisterForm(forms.ModelForm):
         fields = [
             "username",
             "email",
+            "real_name",
             "company",
             "phone",
+            "title",
             "department",
             "password",
             "confirm_password",
@@ -40,14 +43,24 @@ class RegisterForm(forms.ModelForm):
     def clean(self):
         cleaned = super().clean()
         if cleaned.get("password") != cleaned.get("confirm_password"):
-            self.add_error("confirm_password", "两次密码不一致")
+            self.add_error("confirm_password", "The two password entries do not match.")
         return cleaned
 
 
 class LoginForm(AuthenticationForm):
     def confirm_login_allowed(self, user):
-        if user.approve_status != User.APPROVE_APPROVED and not user.is_superuser:
+        if user.is_deleted or user.status == User.STATUS_DISABLED:
             raise forms.ValidationError(
-                "账号未通过审批，请联系管理员。",
-                code="not_approved",
+                "This account has been disabled. Please contact an administrator.",
+                code="account_disabled",
+            )
+        if user.status == User.STATUS_PENDING:
+            raise forms.ValidationError(
+                "This account is still pending approval.",
+                code="account_pending",
+            )
+        if user.status == User.STATUS_REJECTED:
+            raise forms.ValidationError(
+                "This account has been rejected. Please contact an administrator.",
+                code="account_rejected",
             )

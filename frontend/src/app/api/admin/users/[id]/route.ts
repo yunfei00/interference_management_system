@@ -1,5 +1,13 @@
 import { proxyProtectedJson } from "@/lib/server-bff";
 
+export async function GET(
+  _request: Request,
+  context: { params: Promise<{ id: string }> },
+) {
+  const { id } = await context.params;
+  return proxyProtectedJson(`/api/v1/admin/users/${id}/`);
+}
+
 export async function PATCH(
   request: Request,
   context: { params: Promise<{ id: string }> },
@@ -10,5 +18,15 @@ export async function PATCH(
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
+  });
+}
+
+export async function DELETE(
+  _request: Request,
+  context: { params: Promise<{ id: string }> },
+) {
+  const { id } = await context.params;
+  return proxyProtectedJson(`/api/v1/admin/users/${id}/`, {
+    method: "DELETE",
   });
 }

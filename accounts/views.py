@@ -12,10 +12,16 @@ def register_view(request):
         form = RegisterForm(request.POST)
         if form.is_valid():
             user: User = form.save(commit=False)
+            user.real_name = form.cleaned_data["real_name"]
+            user.title = form.cleaned_data.get("title", "")
             user.set_password(form.cleaned_data["password"])
-            user.approve_status = User.APPROVE_PENDING
+            user.approve_status = User.STATUS_PENDING
+            user.role = User.ROLE_USER
             user.save()
-            messages.success(request, "注册成功，等待管理员审批。")
+            messages.success(
+                request,
+                "Registration submitted successfully. Please wait for administrator approval.",
+            )
             return redirect("accounts:login")
     else:
         form = RegisterForm()

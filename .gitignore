@@ -21,7 +21,11 @@ db.sqlite3
 /projects/migrations
 /system/migrations
 /tool_management_project/migrations
-/accounts/migrations
+/accounts/migrations/*
+!/accounts/migrations/
+!/accounts/migrations/__init__.py
+!/accounts/migrations/0004_alter_department_options_alter_user_options_and_more.py
+/accounts/migrations/__pycache__/
 /datahub/migrations
 /ops/migrations
 /security

@@ -1,29 +1,30 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Suspense, useState } from "react";
 
-import { APP_NAME } from "@/lib/public-config";
-
+import { LanguageSwitcher } from "./language-switcher";
 import { LoginForm } from "./login-form";
 import { RegisterForm } from "./register-form";
 import styles from "./auth-gate.module.css";
 
-function brandInitials() {
-  const name = APP_NAME.trim();
-  if (!name) {
-    return "—";
+function brandInitials(name: string) {
+  const normalized = name.trim();
+  if (!normalized) {
+    return "IM";
   }
-  return name.length <= 2 ? name : name.slice(0, 2);
+  return normalized.length <= 2 ? normalized : normalized.slice(0, 2).toUpperCase();
 }
 
 export type AuthGateProps = {
-  /** 无 `?tab=` 时的默认页签（如 `/register` 设为 register） */
   defaultTab?: "login" | "register";
 };
 
 function AuthGateContent({ defaultTab = "login" }: AuthGateProps) {
   const searchParams = useSearchParams();
+  const t = useTranslations();
+  const appName = t("common.appName");
   const tabParam = searchParams.get("tab");
   const forcedTab =
     tabParam === "register" ? "register" : tabParam === "login" ? "login" : null;
@@ -37,19 +38,24 @@ function AuthGateContent({ defaultTab = "login" }: AuthGateProps) {
   return (
     <div className={styles.shell}>
       <main className={styles.page}>
-        <aside aria-label="产品标识" className={styles.brand}>
+        <aside aria-label={t("auth.productIdentity")} className={styles.brand}>
           <div className={styles.brandInner}>
-            <div className={styles.brandMark}>{brandInitials()}</div>
-            <h1 className={styles.brandTitle}>{APP_NAME}</h1>
-            <p className={styles.brandTagline}>
-              企业统一身份认证。登录与注册均在站内完成，数据由公司后台统一审批与授权。
-            </p>
-            <p className={styles.brandFoot}>内部信息系统 · 受控访问</p>
+            <div className={styles.brandTop}>
+              <LanguageSwitcher variant="dark" />
+            </div>
+            <div className={styles.brandMark}>{brandInitials(appName)}</div>
+            <h1 className={styles.brandTitle}>{appName}</h1>
+            <p className={styles.brandTagline}>{t("auth.gate.tagline")}</p>
+            <p className={styles.brandFoot}>{t("auth.gate.foot")}</p>
           </div>
         </aside>
 
         <div className={styles.panel}>
-          <div aria-label="账户操作" className={styles.tabs} role="tablist">
+          <div
+            aria-label={t("auth.accountActions")}
+            className={styles.tabs}
+            role="tablist"
+          >
             <button
               aria-controls={loginPanelId}
               aria-selected={activeTab === "login"}
@@ -59,7 +65,7 @@ function AuthGateContent({ defaultTab = "login" }: AuthGateProps) {
               role="tab"
               type="button"
             >
-              登录
+              {t("auth.tabs.login")}
             </button>
             <button
               aria-controls={registerPanelId}
@@ -70,7 +76,7 @@ function AuthGateContent({ defaultTab = "login" }: AuthGateProps) {
               role="tab"
               type="button"
             >
-              注册
+              {t("auth.tabs.register")}
             </button>
           </div>
 
@@ -99,11 +105,13 @@ function AuthGateContent({ defaultTab = "login" }: AuthGateProps) {
 }
 
 export function AuthGate(props: AuthGateProps) {
+  const t = useTranslations("auth");
+
   return (
     <Suspense
       fallback={
         <div className={styles.shell}>
-          <div className={styles.fallback}>加载中…</div>
+          <div className={styles.fallback}>{t("loading")}</div>
         </div>
       }
     >
